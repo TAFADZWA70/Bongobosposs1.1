@@ -1,0 +1,289 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Setup - Bongoboss Enterprise</title>
+    <link rel="stylesheet" href="../Css/auth-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>Bongoboss Enterprise</span>
+            </div>
+            <button class="logout-btn" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+
+        <div class="setup-content">
+            <div class="progress-bar">
+                <div class="progress-step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Business Info</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Business Details</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Tax & Currency</div>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Review</div>
+                </div>
+            </div>
+
+            <!-- Step 1: Business Info -->
+            <div class="setup-step active" id="step1">
+                <div class="step-header">
+                    <h2>Tell Us About Your Business</h2>
+                    <p>This information will help us personalize your experience</p>
+                </div>
+
+                <form class="setup-form">
+                    <div class="form-group">
+                        <label for="businessName">Business Name *</label>
+                        <input type="text" id="businessName" placeholder="e.g., Mike's Electronics" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="businessType">Business Type *</label>
+                        <select id="businessType" required>
+                            <option value="">Select business type</option>
+                            <option value="retail">Retail Store</option>
+                            <option value="wholesale">Wholesale</option>
+                            <option value="restaurant">Restaurant/Café</option>
+                            <option value="pharmacy">Pharmacy</option>
+                            <option value="grocery">Grocery Store</option>
+                            <option value="clothing">Clothing Store</option>
+                            <option value="electronics">Electronics</option>
+                            <option value="Tarven/Club">Tarven/Club</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="businessLogo">Business Logo (Optional)</label>
+                        <div class="file-upload-area" id="logoUploadArea">
+                            <input type="file" id="businessLogo" accept="image/*" hidden>
+                            <div class="upload-placeholder">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click to upload or drag and drop</p>
+                                <span>PNG, JPG up to 5MB</span>
+                            </div>
+                            <div class="upload-preview" id="logoPreview" style="display: none;">
+                                <img id="logoImage" src="" alt="Logo preview">
+                                <button type="button" class="remove-image" id="removeLogo">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-primary" id="step1Next">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 2: Business Details -->
+            <div class="setup-step" id="step2">
+                <div class="step-header">
+                    <h2>Business Contact Details</h2>
+                    <p>How can customers reach you?</p>
+                </div>
+
+                <form class="setup-form">
+                    <div class="form-group">
+                        <label for="businessPhone">Business Phone Number *</label>
+                        <input type="tel" id="businessPhone" placeholder="+27 123 456 789" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="businessEmail">Business Email</label>
+                        <input type="email" id="businessEmail" placeholder="info@yourbusiness.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="businessAddress">Business Address *</label>
+                        <textarea id="businessAddress" rows="3" placeholder="123 Main Street, City, Province, Postal Code" required></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="businessCity">City *</label>
+                            <input type="text" id="businessCity" placeholder="Johannesburg" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="businessProvince">Province *</label>
+                            <select id="businessProvince" required>
+                                <option value="">Select province</option>
+                                <option value="GP">Gauteng</option>
+                                <option value="WC">Western Cape</option>
+                                <option value="EC">Eastern Cape</option>
+                                <option value="KZN">KwaZulu-Natal</option>
+                                <option value="LP">Limpopo</option>
+                                <option value="MP">Mpumalanga</option>
+                                <option value="NC">Northern Cape</option>
+                                <option value="NW">North West</option>
+                                <option value="FS">Free State</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="step2Prev">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button type="button" class="btn-primary" id="step2Next">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 3: Tax & Currency -->
+            <div class="setup-step" id="step3">
+                <div class="step-header">
+                    <h2>Tax & Currency Settings</h2>
+                    <p>Configure your financial settings</p>
+                </div>
+
+                <form class="setup-form">
+                    <div class="form-group">
+                        <label for="currency">Currency *</label>
+                        <select id="currency" required>
+                            <option value="ZAR">ZAR - South African Rand (R)</option>
+                            <option value="USD">USD - US Dollar ($)</option>
+                            <option value="EUR">EUR - Euro (€)</option>
+                            <option value="GBP">GBP - British Pound (£)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="vatRegistered">
+                            <span>My business is VAT registered</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group" id="vatNumberGroup" style="display: none;">
+                        <label for="vatNumber">VAT Number</label>
+                        <input type="text" id="vatNumber" placeholder="4123456789">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taxRate">Tax/VAT Rate (%) *</label>
+                        <input type="number" id="taxRate" placeholder="15" step="0.01" min="0" max="100" value="15" required>
+                        <small>Current South African VAT rate is 15%</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="financialYearEnd">Financial Year End *</label>
+                        <input type="date" id="financialYearEnd" required>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="step3Prev">
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button type="button" class="btn-primary" id="step3Next">
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 4: Review -->
+            <div class="setup-step" id="step4">
+                <div class="step-header">
+                    <h2>Review Your Information</h2>
+                    <p>Please review your business details before completing setup</p>
+                </div>
+
+                <div class="review-section">
+                    <div class="review-card">
+                        <h3><i class="fas fa-store"></i> Business Information</h3>
+                        <div class="review-item">
+                            <span class="review-label">Business Name:</span>
+                            <span class="review-value" id="reviewBusinessName">-</span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Business Type:</span>
+                            <span class="review-value" id="reviewBusinessType">-</span>
+                        </div>
+                        <button type="button" class="edit-btn" onclick="goToStep(1)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+
+                    <div class="review-card">
+                        <h3><i class="fas fa-map-marker-alt"></i> Contact Details</h3>
+                        <div class="review-item">
+                            <span class="review-label">Phone:</span>
+                            <span class="review-value" id="reviewPhone">-</span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Email:</span>
+                            <span class="review-value" id="reviewEmail">-</span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Address:</span>
+                            <span class="review-value" id="reviewAddress">-</span>
+                        </div>
+                        <button type="button" class="edit-btn" onclick="goToStep(2)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+
+                    <div class="review-card">
+                        <h3><i class="fas fa-calculator"></i> Tax & Currency</h3>
+                        <div class="review-item">
+                            <span class="review-label">Currency:</span>
+                            <span class="review-value" id="reviewCurrency">-</span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Tax Rate:</span>
+                            <span class="review-value" id="reviewTaxRate">-</span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">VAT Registered:</span>
+                            <span class="review-value" id="reviewVATStatus">-</span>
+                        </div>
+                        <button type="button" class="edit-btn" onclick="goToStep(3)">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="step4Prev">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button type="button" class="btn-primary" id="completeSetup">
+                        <span class="btn-text">Complete Setup <i class="fas fa-check"></i></span>
+                        <span class="btn-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../Script/business-setup.js"></script>
+</body>
+</html>

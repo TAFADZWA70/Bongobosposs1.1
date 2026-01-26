@@ -67,10 +67,33 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Authentication Pages\BusinessSetupWizard.html" />
+    <Content Include="Authentication Pages\ForgotPassword.html" />
+    <Content Include="Authentication Pages\Login.html" />
+    <Content Include="Authentication Pages\Register.html" />
+    <Content Include="Authentication Pages\UserProfile.html" />
+    <Content Include="Css\adduser.css" />
+    <Content Include="Css\auth-styles.css" />
+    <Content Include="Css\branch.css" />
+    <Content Include="Css\dashboard.css" />
+    <Content Include="Css\forgot.css" />
     <Content Include="Css\index.css" />
+    <Content Include="Dashboard\AddBranch.html" />
+    <Content Include="Dashboard\AddUsers.html" />
+    <Content Include="Dashboard\DashboardAdmin.html" />
+    <Content Include="Dashboard\DashboardEmployee.html" />
+    <Content Include="Dashboard\DashboardOwner.html" />
     <Content Include="Index.html" />
+    <Content Include="Script\add-branch.js" />
+    <Content Include="Script\AddUser.js" />
+    <Content Include="Script\business-setup.js" />
+    <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />
+    <Content Include="Script\Login.js" />
+    <Content Include="Script\owanerdashboard.js" />
+    <Content Include="Script\Register.js" />
     <Content Include="Script\storage.js" />
+    <Content Include="Script\Userprofile.js" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -86,9 +109,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Authentication Pages\" />
     <Folder Include="Customer Pages\" />
-    <Folder Include="Dashboard\" />
     <Folder Include="Finanacial Management\" />
     <Folder Include="Help and Support\" />
     <Folder Include="Inventory Management\" />

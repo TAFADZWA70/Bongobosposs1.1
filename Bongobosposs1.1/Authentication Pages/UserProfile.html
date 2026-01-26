@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - Bongoboss Enterprise</title>
+    <link rel="stylesheet" href="../Css/auth-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="profile-container">
+        <div class="profile-sidebar">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <span>Bongoboss Enterprise</span>
+            </div>
+
+            <nav class="profile-nav">
+                <a href="#" class="nav-item active" data-tab="personal">
+                    <i class="fas fa-user"></i>
+                    <span>Personal Info</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="security">
+                    <i class="fas fa-lock"></i>
+                    <span>Security</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="business">
+                    <i class="fas fa-building"></i>
+                    <span>Business Info</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="../Dashboard/DashboardOwner.html" class="btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <button class="btn-danger" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <div class="profile-main">
+            <!-- Personal Info Tab -->
+            <div class="profile-tab active" id="personal-tab">
+                <div class="profile-header">
+                    <h1>Personal Information</h1>
+                    <p>Update your personal details and profile picture</p>
+                </div>
+
+                <div class="profile-card">
+                    <div class="profile-photo-section">
+                        <div class="profile-photo">
+                            <img id="profileImage" src="https://ui-avatars.com/api/?name=User&size=200&background=2563eb&color=fff" alt="Profile">
+                            <div class="photo-overlay">
+                                <i class="fas fa-camera"></i>
+                            </div>
+                            <input type="file" id="photoInput" accept="image/*" hidden>
+                        </div>
+                        <div class="photo-info">
+                            <h3 id="userName">Loading...</h3>
+                            <p id="userEmail">loading@example.com</p>
+                            <span class="badge" id="userRole">Owner</span>
+                        </div>
+                    </div>
+
+                    <form id="personalInfoForm" class="profile-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name</label>
+                                <input type="text" id="firstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name</label>
+                                <input type="text" id="lastName" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" disabled>
+                            <small>Email cannot be changed</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-text">Save Changes</span>
+                                <span class="btn-loader" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="profile-tab" id="security-tab">
+                <div class="profile-header">
+                    <h1>Security Settings</h1>
+                    <p>Manage your password and account security</p>
+                </div>
+
+                <div class="profile-card">
+                    <h3>Change Password</h3>
+                    <form id="passwordForm" class="profile-form">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="currentPassword" required>
+                                <button type="button" class="toggle-password" data-target="currentPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="newPassword" required>
+                                <button type="button" class="toggle-password" data-target="newPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-fill" id="passwordStrengthFill"></div>
+                                </div>
+                                <span class="strength-text" id="passwordStrengthText">Password strength</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmNewPassword">Confirm New Password</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" id="confirmNewPassword" required>
+                                <button type="button" class="toggle-password" data-target="confirmNewPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-text">Update Password</span>
+                                <span class="btn-loader" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Notifications Tab -->
+            <div class="profile-tab" id="notifications-tab">
+                <div class="profile-header">
+                    <h1>Notification Preferences</h1>
+                    <p>Choose what notifications you want to receive</p>
+                </div>
+
+                <div class="profile-card">
+                    <form id="notificationsForm" class="profile-form">
+                        <div class="notification-group">
+                            <h3>Email Notifications</h3>
+                            <label class="switch-container">
+                                <input type="checkbox" id="emailDailyReports" checked>
+                                <span class="switch"></span>
+                                <div class="switch-label">
+                                    <strong>Daily Reports</strong>
+                                    <p>Receive daily business summary via email</p>
+                                </div>
+                            </label>
+
+                            <label class="switch-container">
+                                <input type="checkbox" id="emailLowStock" checked>
+                                <span class="switch"></span>
+                                <div class="switch-label">
+                                    <strong>Low Stock Alerts</strong>
+                                    <p>Get notified when products are running low</p>
+                                </div>
+                            </label>
+
+                            <label class="switch-container">
+                                <input type="checkbox" id="emailSalesAlerts">
+                                <span class="switch"></span>
+                                <div class="switch-label">
+                                    <strong>Large Sales Alerts</strong>
+                                    <p>Notify for sales above a certain amount</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="notification-group">
+                            <h3>WhatsApp Notifications</h3>
+                            <label class="switch-container">
+                                <input type="checkbox" id="whatsappReports" checked>
+                                <span class="switch"></span>
+                                <div class="switch-label">
+                                    <strong>Daily Reports via WhatsApp</strong>
+                                    <p>Receive summary on WhatsApp at end of day</p>
+                                </div>
+                            </label>
+
+                            <label class="switch-container">
+                                <input type="checkbox" id="whatsappAlerts" checked>
+                                <span class="switch"></span>
+                                <div class="switch-label">
+                                    <strong>Instant Alerts</strong>
+                                    <p>Critical alerts sent immediately to WhatsApp</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-text">Save Preferences</span>
+                                <span class="btn-loader" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Business Info Tab -->
+            <div class="profile-tab" id="business-tab">
+                <div class="profile-header">
+                    <h1>Business Information</h1>
+                    <p>View and update your business details</p>
+                </div>
+
+                <div class="profile-card">
+                    <div id="businessInfo">
+                        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading business information...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="successToast" class="toast success" style="display: none;">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Changes saved successfully!</span>
+    </div>
+
+    <div id="errorToast" class="toast error" style="display: none;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred</span>
+    </div>
+
+    <script type="module" src="../Script/Userprofile.js"></script>
+</body>
+</html>
