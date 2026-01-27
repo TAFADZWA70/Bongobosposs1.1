@@ -18,6 +18,7 @@ const db = getDatabase(app);
 
 let currentUser = null;
 let userData = null;
+let businessData = null;
 
 // Generate clean ID from email
 function generateCleanId(email) {
@@ -94,12 +95,61 @@ async function loadUserData() {
             // Load notification settings
             loadNotificationSettings(userData);
 
-            // Load business info
-            await loadBusinessInfo(userData.businessId);
+            // Load business info and update navigation
+            await loadBusinessData(userData.businessId);
         }
     } catch (error) {
         console.error('Error loading user data:', error);
         showToast('Failed to load user data', 'error');
+    }
+}
+
+// Load business data and update navigation
+async function loadBusinessData(businessId) {
+    if (!businessId) {
+        console.warn('No business ID found');
+        return;
+    }
+
+    try {
+        const businessRef = ref(db, `businesses/${businessId}`);
+        const businessSnap = await get(businessRef);
+
+        if (businessSnap.exists()) {
+            businessData = businessSnap.val();
+
+            // Update business information in navigation/sidebar
+            updateBusinessInfo();
+
+            // Load business info section
+            await loadBusinessInfo(businessId);
+        }
+    } catch (error) {
+        console.error('Error loading business data:', error);
+    }
+}
+
+// Update business information in sidebar/navigation
+function updateBusinessInfo() {
+    const businessNameEl = document.getElementById('businessName');
+    const businessTypeEl = document.getElementById('businessType');
+    const businessLogoContainer = document.getElementById('businessLogoContainer');
+
+    if (businessData) {
+        // Update business name
+        if (businessNameEl) {
+            businessNameEl.textContent = businessData.businessName || 'Business Name';
+        }
+
+        // Update business type
+        if (businessTypeEl) {
+            businessTypeEl.textContent = businessData.businessType || 'Business Type';
+        }
+
+        // Display logo if available
+        if (businessLogoContainer && businessData.logo) {
+            businessLogoContainer.innerHTML = `<img src="${businessData.logo}" alt="Business Logo">`;
+        }
     }
 }
 
@@ -124,12 +174,10 @@ async function loadBusinessInfo(businessId) {
     }
 
     try {
-        const businessReference = ref(db, `businesses/${businessId}`);
-        const snapshot = await get(businessReference);
+        // Use businessData if already loaded
+        const business = businessData;
 
-        if (snapshot.exists()) {
-            const business = snapshot.val();
-
+        if (business) {
             businessInfoDiv.innerHTML = `
                 <div class="form-row">
                     ${business.logo ? `
@@ -444,3 +492,5 @@ function showToast(message, type = 'success') {
         toast.style.display = 'none';
     }, 3000);
 }
+
+console.log('BongoBoss POS - User Profile with Business Info Initialized ✓');

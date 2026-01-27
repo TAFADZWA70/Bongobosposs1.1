@@ -250,10 +250,52 @@ function loadRecentTransactions() {
     `).join('');
 }
 
-// Mobile menu toggle
-document.getElementById('menuToggle').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('active');
+// ===== MOBILE MENU TOGGLE (HAMBURGER STYLE) =====
+const hamburger = document.getElementById('menuToggle');
+const navMenu = document.getElementById('sidebar');
+
+hamburger.addEventListener('click', () => {
+    navMenu.classList.toggle('active');
+
+    // Animate hamburger icon
+    hamburger.classList.toggle('active');
 });
+
+// Close menu when clicking on a link
+document.querySelectorAll('.sidebar .menu-link').forEach(link => {
+    link.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+        hamburger.classList.remove('active');
+    });
+});
+
+// Add hamburger animation styles
+const style = document.createElement('style');
+style.textContent = `
+    /* Hamburger icon animation */
+    .menu-toggle {
+        transition: transform 0.3s ease;
+    }
+    
+    .menu-toggle.active {
+        transform: rotate(90deg);
+    }
+    
+    .menu-toggle i {
+        transition: all 0.3s ease;
+    }
+    
+    /* Optional: Add hamburger bars animation if you want to convert icon to X */
+    .menu-toggle.active i::before {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    
+    .menu-toggle.active i::after {
+        transform: rotate(-45deg) translate(7px, -6px);
+    }
+`;
+document.head.appendChild(style);
+// ===== END MOBILE MENU TOGGLE =====
 
 // Filter buttons
 const filterBtns = document.querySelectorAll('.filter-btn');
@@ -318,3 +360,5 @@ function setupRealtimeListeners() {
 setTimeout(() => {
     setupRealtimeListeners();
 }, 2000);
+
+console.log('BongoBoss POS - Owner Dashboard Initialized ✓');

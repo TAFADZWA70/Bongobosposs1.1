@@ -78,6 +78,7 @@
     <Content Include="Css\dashboard.css" />
     <Content Include="Css\forgot.css" />
     <Content Include="Css\index.css" />
+    <Content Include="Css\profile.css" />
     <Content Include="Dashboard\AddBranch.html" />
     <Content Include="Dashboard\AddUsers.html" />
     <Content Include="Dashboard\DashboardAdmin.html" />
@@ -101,6 +102,7 @@
     <Content Include="Robots.txt" />
     <Content Include="Script\add-branch.js" />
     <Content Include="Script\AddUser.js" />
+    <Content Include="Script\burger.js" />
     <Content Include="Script\business-setup.js" />
     <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />

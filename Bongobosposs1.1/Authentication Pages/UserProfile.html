@@ -5,51 +5,154 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - Bongoboss Enterprise</title>
     <link rel="stylesheet" href="../Css/auth-styles.css">
+    <link href="../Css/profile.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="profile-container">
-        <div class="profile-sidebar">
-            <div class="logo">
-                <i class="fas fa-chart-line"></i>
-                <span>Bongoboss Enterprise</span>
+        <!-- Universal Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fas fa-cash-register"></i>
+                <span>BongoBoss</span>
             </div>
 
-            <nav class="profile-nav">
-                <a href="#" class="nav-item active" data-tab="personal">
+            <!-- Business Info -->
+            <div class="business-info">
+                <div class="business-logo-container" id="businessLogoContainer">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div class="business-name" id="businessName">Loading...</div>
+                <div class="business-type" id="businessType">-</div>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li class="menu-item">
+                    <a href="../Dashboard/DashboardOwner.html" class="menu-link">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="../Authentication Pages/UserProfile.html" class="menu-link active">
+                        <i class="fas fa-user"></i>
+                        <span>Business Profile</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="../Dashboard/AddBranch.html" class="menu-link">
+                        <i class="fas fa-code-branch"></i>
+                        <span>Add Branch</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="../Dashboard/AddUsers.html" class="menu-link">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Add Users</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>POS</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-receipt"></i>
+                        <span>Sales</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-boxes"></i>
+                        <span>Inventory</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-users"></i>
+                        <span>Customers</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-wallet"></i>
+                        <span>Finances</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reports</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link" id="logoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="profile-main">
+            <!-- Top Bar with Burger Menu -->
+            <div class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1>My Profile</h1>
+                        <p>Manage your account settings and preferences</p>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <div class="user-profile" id="userProfile">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Navigation Tabs -->
+            <div class="profile-tabs">
+                <button class="tab-btn active" data-tab="personal">
                     <i class="fas fa-user"></i>
                     <span>Personal Info</span>
-                </a>
-                <a href="#" class="nav-item" data-tab="security">
+                </button>
+                <button class="tab-btn" data-tab="security">
                     <i class="fas fa-lock"></i>
                     <span>Security</span>
-                </a>
-                <a href="#" class="nav-item" data-tab="notifications">
+                </button>
+                <button class="tab-btn" data-tab="notifications">
                     <i class="fas fa-bell"></i>
                     <span>Notifications</span>
-                </a>
-                <a href="#" class="nav-item" data-tab="business">
+                </button>
+                <button class="tab-btn" data-tab="business">
                     <i class="fas fa-building"></i>
                     <span>Business Info</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <a href="../Dashboard/DashboardOwner.html" class="btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
-                <button class="btn-danger" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
-        </div>
 
-        <div class="profile-main">
             <!-- Personal Info Tab -->
             <div class="profile-tab active" id="personal-tab">
                 <div class="profile-header">
-                    <h1>Personal Information</h1>
+                    <h2>Personal Information</h2>
                     <p>Update your personal details and profile picture</p>
                 </div>
 
@@ -107,7 +210,7 @@
             <!-- Security Tab -->
             <div class="profile-tab" id="security-tab">
                 <div class="profile-header">
-                    <h1>Security Settings</h1>
+                    <h2>Security Settings</h2>
                     <p>Manage your password and account security</p>
                 </div>
 
@@ -168,7 +271,7 @@
             <!-- Notifications Tab -->
             <div class="profile-tab" id="notifications-tab">
                 <div class="profile-header">
-                    <h1>Notification Preferences</h1>
+                    <h2>Notification Preferences</h2>
                     <p>Choose what notifications you want to receive</p>
                 </div>
 
@@ -240,7 +343,7 @@
             <!-- Business Info Tab -->
             <div class="profile-tab" id="business-tab">
                 <div class="profile-header">
-                    <h1>Business Information</h1>
+                    <h2>Business Information</h2>
                     <p>View and update your business details</p>
                 </div>
 
@@ -263,6 +366,34 @@
         <span id="errorToastMessage">An error occurred</span>
     </div>
 
+    <!-- Include Universal Burger Menu -->
+    <script src="../Script/burger.js"></script>
     <script type="module" src="../Script/Userprofile.js"></script>
+    <script>
+        // Initialize burger menu with dashboard-style navigation
+        initBurgerMenu({
+            toggleBtn: '#menuToggle',
+            menu: '#sidebar',
+            menuLinks: '.sidebar .menu-link'
+        });
+
+        // Tab switching functionality
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const profileTabs = document.querySelectorAll('.profile-tab');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetTab = btn.dataset.tab;
+
+                // Remove active class from all buttons and tabs
+                tabBtns.forEach(b => b.classList.remove('active'));
+                profileTabs.forEach(tab => tab.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding tab
+                btn.classList.add('active');
+                document.getElementById(`${targetTab}-tab`).classList.add('active');
+            });
+        });
+    </script>
 </body>
 </html>
