@@ -83,7 +83,22 @@
     <Content Include="Dashboard\DashboardAdmin.html" />
     <Content Include="Dashboard\DashboardEmployee.html" />
     <Content Include="Dashboard\DashboardOwner.html" />
+    <Content Include="img\AI.png" />
+    <Content Include="img\APP.png" />
+    <Content Include="img\BongoBossLogo.png" />
+    <Content Include="img\BongoBossLogoresized.png" />
+    <Content Include="img\CHARTS.png" />
+    <Content Include="img\favicon.ico" />
+    <Content Include="img\favicon.png" />
+    <Content Include="img\favicon2.png" />
+    <Content Include="img\simba.jpg" />
+    <Content Include="img\SMART.png" />
+    <Content Include="img\tafadzwa.jpg" />
+    <Content Include="img\tanatsirwa.jpg" />
+    <Content Include="img\VAI.png" />
+    <Content Include="img\WHATSAPP.png" />
     <Content Include="Index.html" />
+    <Content Include="Robots.txt" />
     <Content Include="Script\add-branch.js" />
     <Content Include="Script\AddUser.js" />
     <Content Include="Script\business-setup.js" />
@@ -94,6 +109,7 @@
     <Content Include="Script\Register.js" />
     <Content Include="Script\storage.js" />
     <Content Include="Script\Userprofile.js" />
+    <Content Include="Sitemap.xml" />
     <Content Include="Web.config" />
   </ItemGroup>
   <ItemGroup>

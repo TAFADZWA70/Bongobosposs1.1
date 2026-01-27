@@ -1,0 +1,30 @@
+# Robots.txt for Bongoboss Enterprise
+# https://bongobossenterprise.netlify.app/
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /private/
+Disallow: /*.json$
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://bongobossenterprise.netlify.app/sitemap.xml
+
+# Crawl-delay for polite crawlers
+Crawl-delay: 1
+
+# Allow search engines to index images
+User-agent: Googlebot-Image
+Allow: /img/
+Allow: /images/
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
