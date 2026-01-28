@@ -1,0 +1,967 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Inventory Management">
+    <title>Inventory Management - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/inventory.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Quagga JS for barcode scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading inventory...</p>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="businessType">-</div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="Dashboard.html" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Authentication Pages/UserProfile.html" class="menu-link">
+                    <i class="fas fa-user"></i>
+                    <span>Business Profile</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dasboard/AddBranch.html" class="menu-link">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Add Branch</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dashboard/AddUsers.html" class="menu-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Users</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>POS</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-receipt"></i>
+                    <span>Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="InventoryManagement.html" class="menu-link active">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finances</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Inventory Management</h1>
+                    <p id="welcomeMessage">Manage your products and stock levels</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search products..." id="searchInput">
+                </div>
+                <button class="scan-btn" id="scanBtn">
+                    <i class="fas fa-barcode"></i>
+                    <span>Scan Barcode</span>
+                </button>
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Content -->
+        <div class="inventory-content">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Products</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalProducts">0</div>
+                    <div class="stat-change">
+                        <span id="productsChange">0 categories</span>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Value</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalValue">R 0.00</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span id="valueChange">Based on cost price</span>
+                    </div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-header">
+                        <span class="stat-title">Low Stock</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="lowStock">0</div>
+                    <div class="stat-change negative">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="criticalStock">0 items critical</span>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <span class="stat-title">Out of Stock</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="outOfStock">0</div>
+                    <div class="stat-change negative">
+                        <i class="fas fa-arrow-down"></i>
+                        <span id="outOfStockChange">Requires attention</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="inventory-actions">
+                <button class="action-btn primary" id="addProductBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add Product</span>
+                </button>
+                <button class="action-btn secondary" id="reportLossBtn">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Report Loss</span>
+                </button>
+                <button class="action-btn" id="viewLossesBtn">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>View Losses</span>
+                </button>
+                <button class="action-btn" id="weeklyReportBtn">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Weekly Report</span>
+                </button>
+                <button class="action-btn" id="bulkUploadBtn">
+                    <i class="fas fa-upload"></i>
+                    <span>Bulk Upload</span>
+                </button>
+                <button class="action-btn" id="exportBtn">
+                    <i class="fas fa-download"></i>
+                    <span>Export Inventory</span>
+                </button>
+                <button class="action-btn" id="historyBtn">
+                    <i class="fas fa-history"></i>
+                    <span>Change History</span>
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label><i class="fas fa-filter"></i> Category:</label>
+                    <select id="categoryFilter">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-warehouse"></i> Stock Status:</label>
+                    <select id="stockFilter">
+                        <option value="all">All Stock</option>
+                        <option value="in-stock">In Stock</option>
+                        <option value="low-stock">Low Stock</option>
+                        <option value="out-of-stock">Out of Stock</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-code-branch"></i> Branch:</label>
+                    <select id="branchFilter">
+                        <option value="all">All Branches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-sort"></i> Sort By:</label>
+                    <select id="sortFilter">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="stock-low">Stock (Low to High)</option>
+                        <option value="stock-high">Stock (High to Low)</option>
+                        <option value="price-low">Price (Low to High)</option>
+                        <option value="price-high">Price (High to Low)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="products-section">
+                <div class="section-header">
+                    <h3 class="section-title">Product Inventory</h3>
+                    <div class="view-toggle">
+                        <button class="toggle-btn active" data-view="grid" id="gridViewBtn">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button class="toggle-btn" data-view="list" id="listViewBtn">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="productsLoading" style="display: none; text-align: center; padding: 3rem;">
+                    <div class="spinner"></div>
+                    <p>Loading products...</p>
+                </div>
+
+                <!-- Grid View -->
+                <div class="products-grid" id="productsGrid"></div>
+
+                <!-- List View -->
+                <div class="products-list" id="productsList" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU/Barcode</th>
+                                    <th>Category</th>
+                                    <th>Cost Price</th>
+                                    <th>Sell Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Branch</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Product</h2>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <div class="form-grid">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Basic Information</h3>
+
+                            <div class="form-group">
+                                <label for="productName">Product Name *</label>
+                                <input type="text" id="productName" required placeholder="Enter product name">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="productDescription">Description</label>
+                                <textarea id="productDescription" rows="3" placeholder="Product description"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="productSKU">SKU</label>
+                                    <input type="text" id="productSKU" placeholder="e.g., PRD-001">
+                                </div>
+                                <div class="form-group">
+                                    <label for="productBarcode">Unit Barcode (EAN-13)</label>
+                                    <div class="input-with-btn">
+                                        <input type="text" id="productBarcode" maxlength="13" placeholder="13-digit EAN-13 barcode">
+                                        <button type="button" class="icon-btn" id="scanBarcodeBtn">
+                                            <i class="fas fa-barcode"></i>
+                                        </button>
+                                    </div>
+                                    <small style="color: var(--gray-600); font-size: 0.8rem;">For individual unit</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="productCategory">Category *</label>
+                                <div class="input-with-btn">
+                                    <select id="productCategory" required>
+                                        <option value="">Select category</option>
+                                    </select>
+                                    <button type="button" class="icon-btn" id="addCategoryBtn">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pricing -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Pricing</h3>
+
+                            <div class="form-group">
+                                <label for="costPrice">Cost Price *</label>
+                                <div class="input-with-icon">
+                                    <span class="currency-symbol">R</span>
+                                    <input type="number" id="costPrice" step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="sellPrice">Sell Price *</label>
+                                <div class="input-with-icon">
+                                    <span class="currency-symbol">R</span>
+                                    <input type="number" id="sellPrice" step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="profit-display">
+                                <div class="profit-item">
+                                    <span>Profit Margin:</span>
+                                    <strong id="profitMargin">0%</strong>
+                                </div>
+                                <div class="profit-item">
+                                    <span>Profit per Unit:</span>
+                                    <strong id="profitPerUnit">R 0.00</strong>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="taxRate">Tax Rate (%)</label>
+                                <input type="number" id="taxRate" step="0.01" min="0" max="100" value="15" placeholder="15">
+                            </div>
+                        </div>
+
+                        <!-- Stock Information -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Stock Information</h3>
+
+                            <div class="form-group">
+                                <label for="productBranch">Branch *</label>
+                                <select id="productBranch" required>
+                                    <option value="">Select branch</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="currentStock">Current Stock *</label>
+                                <input type="number" id="currentStock" min="0" required placeholder="0">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="minStock">Minimum Stock</label>
+                                    <input type="number" id="minStock" min="0" value="10" placeholder="10">
+                                </div>
+                                <div class="form-group">
+                                    <label for="maxStock">Maximum Stock</label>
+                                    <input type="number" id="maxStock" min="0" value="1000" placeholder="1000">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="unit">Primary Unit</label>
+                                <select id="unit">
+                                    <option value="pcs">Pieces</option>
+                                    <option value="kg">Kilograms</option>
+                                    <option value="g">Grams</option>
+                                    <option value="l">Liters</option>
+                                    <option value="ml">Milliliters</option>
+                                    <option value="item">Item</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="hasPackaging">
+                                    <span>Sold in Packages (Box/Crate/Pack)</span>
+                                </label>
+                            </div>
+
+                            <!-- Packaging Details (Hidden by default) -->
+                            <div id="packagingDetails" style="display: none;">
+                                <div class="packaging-section">
+                                    <h4 style="font-size: 0.95rem; font-weight: 600; color: var(--gray-700); margin-bottom: 1rem;">
+                                        <i class="fas fa-box"></i> Packaging Information
+                                    </h4>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="packageType">Package Type</label>
+                                            <select id="packageType">
+                                                <option value="box">Box</option>
+                                                <option value="crate">Crate</option>
+                                                <option value="pack">Pack</option>
+                                                <option value="carton">Carton</option>
+                                                <option value="case">Case</option>
+                                                <option value="bundle">Bundle</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="unitsPerPackage">Units per Package *</label>
+                                            <input type="number" id="unitsPerPackage" min="1" placeholder="e.g., 6 for 6-pack">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="packageBarcode">Package Barcode (EAN-13)</label>
+                                            <div class="input-with-btn">
+                                                <input type="text" id="packageBarcode" maxlength="13" placeholder="13-digit barcode">
+                                                <button type="button" class="icon-btn" id="scanPackageBarcodeBtn">
+                                                    <i class="fas fa-barcode"></i>
+                                                </button>
+                                            </div>
+                                            <small style="color: var(--gray-600); font-size: 0.8rem;">For the entire package</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="packageSellPrice">Package Sell Price</label>
+                                            <div class="input-with-icon">
+                                                <span class="currency-symbol">R</span>
+                                                <input type="number" id="packageSellPrice" step="0.01" min="0" placeholder="0.00">
+                                            </div>
+                                            <small style="color: var(--gray-600); font-size: 0.8rem;">Optional: If sold by package</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="package-display">
+                                        <div class="package-info-box">
+                                            <i class="fas fa-info-circle"></i>
+                                            <div>
+                                                <strong>Stock Calculation:</strong>
+                                                <p id="packageStockInfo">Enter units per package to see calculation</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Details -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Additional Details</h3>
+
+                            <div class="form-group">
+                                <label for="supplier">Supplier</label>
+                                <input type="text" id="supplier" placeholder="Supplier name">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="brand">Brand</label>
+                                <input type="text" id="brand" placeholder="Brand name">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="location">Storage Location</label>
+                                <input type="text" id="location" placeholder="e.g., Shelf A3">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="trackStock" checked>
+                                    <span>Track Stock Levels</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="isActive" checked>
+                                    <span>Active Product</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelProductForm">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="saveProductBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-save"></i> Save Product
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Stock Loss Modal -->
+    <div class="modal" id="reportLossModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Report Stock Loss</h2>
+                <button class="close-btn" id="closeReportLossModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reportLossForm">
+                    <div class="form-group">
+                        <label for="lossProduct">Product *</label>
+                        <select id="lossProduct" required>
+                            <option value="">Select product</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lossType">Loss Type *</label>
+                        <select id="lossType" required>
+                            <option value="damaged">Damaged</option>
+                            <option value="stolen">Stolen</option>
+                            <option value="expired">Expired</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lossQuantity">Quantity Lost *</label>
+                        <input type="number" id="lossQuantity" min="1" required placeholder="Enter quantity">
+                        <small id="availableStock" style="color: var(--gray-600); font-size: 0.8rem;"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lossReason">Reason *</label>
+                        <input type="text" id="lossReason" required placeholder="Brief reason for loss">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lossNotes">Additional Notes</label>
+                        <textarea id="lossNotes" rows="3" placeholder="Optional: Additional details"></textarea>
+                    </div>
+
+                    <div class="loss-value-display" id="lossValueDisplay" style="display: none;">
+                        <div style="background: var(--danger-light); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                            <h4 style="margin-bottom: 0.5rem; color: var(--danger-color);">
+                                <i class="fas fa-info-circle"></i> Loss Value
+                            </h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <span style="font-size: 0.9rem; color: var(--gray-600);">Cost Impact:</span>
+                                    <strong id="lossCostValue" style="display: block; font-size: 1.2rem; color: var(--danger-color);">R 0.00</strong>
+                                </div>
+                                <div>
+                                    <span style="font-size: 0.9rem; color: var(--gray-600);">Lost Revenue:</span>
+                                    <strong id="lossSellValue" style="display: block; font-size: 1.2rem; color: var(--danger-color);">R 0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelReportLoss">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitReportLoss">
+                            <span class="btn-text">
+                                <i class="fas fa-exclamation-triangle"></i> Report Loss
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Stock Losses Modal -->
+    <div class="modal" id="viewLossesModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Stock Losses History</h2>
+                <button class="close-btn" id="closeViewLossesModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Losses Summary -->
+                <div class="losses-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="summary-card" style="background: var(--danger-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Total Losses (Week)</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--danger-color);" id="weekTotalLosses">0</div>
+                    </div>
+                    <div class="summary-card" style="background: var(--danger-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Cost Value Lost</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--danger-color);" id="weekLossCost">R 0.00</div>
+                    </div>
+                    <div class="summary-card" style="background: var(--danger-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Revenue Lost</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--danger-color);" id="weekLossRevenue">R 0.00</div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="losses-filters" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <select id="lossPeriodFilter" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 6px;">
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <select id="lossTypeFilter" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 6px;">
+                        <option value="all">All Types</option>
+                        <option value="damaged">Damaged</option>
+                        <option value="stolen">Stolen</option>
+                        <option value="expired">Expired</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <select id="lossStatusFilter" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 6px;">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select id="lossBranchFilter" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 6px;">
+                        <option value="all">All Branches</option>
+                    </select>
+                </div>
+
+                <!-- Losses Table -->
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Product</th>
+                                <th>Type</th>
+                                <th>Quantity</th>
+                                <th>Cost Value</th>
+                                <th>Sell Value</th>
+                                <th>Reason</th>
+                                <th>Branch</th>
+                                <th>Reported By</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lossesTableBody">
+                            <tr>
+                                <td colspan="11" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-clipboard-list" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No stock losses recorded
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Report Modal -->
+    <div class="modal" id="weeklyReportModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Generate Weekly Inventory Report</h2>
+                <button class="close-btn" id="closeWeeklyReportModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="report-options" style="margin-bottom: 2rem;">
+                    <div class="form-group">
+                        <label>Branch</label>
+                        <select id="reportBranchSelect">
+                            <option value="all">All Branches (Consolidated)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="reportStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="reportEndDate">
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="generateReportBtn" style="width: 100%; margin-top: 1rem;">
+                        <span class="btn-text">
+                            <i class="fas fa-file-alt"></i> Generate Report
+                        </span>
+                        <span class="btn-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Report Preview -->
+                <div id="reportPreview" style="display: none;">
+                    <div class="report-header" style="text-align: center; padding: 2rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 2rem;">
+                        <h3 style="margin-bottom: 0.5rem;">Weekly Inventory Report</h3>
+                        <p id="reportDateRange" style="color: var(--gray-600);"></p>
+                        <p id="reportBranchName" style="font-weight: 600; color: var(--primary-color);"></p>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="report-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="summary-card" style="background: var(--primary-light); padding: 1rem; border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Total Products</div>
+                            <div style="font-size: 1.8rem; font-weight: 600; color: var(--primary-color);" id="reportTotalProducts">0</div>
+                        </div>
+                        <div class="summary-card" style="background: var(--secondary-light); padding: 1rem; border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Total Units</div>
+                            <div style="font-size: 1.8rem; font-weight: 600; color: var(--secondary-color);" id="reportTotalUnits">0</div>
+                        </div>
+                        <div class="summary-card" style="background: var(--success-light); padding: 1rem; border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Inventory Value</div>
+                            <div style="font-size: 1.8rem; font-weight: 600; color: var(--success-color);" id="reportTotalValue">R 0.00</div>
+                        </div>
+                        <div class="summary-card" style="background: var(--accent-light); padding: 1rem; border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Potential Profit</div>
+                            <div style="font-size: 1.8rem; font-weight: 600; color: var(--accent-color);" id="reportPotentialProfit">R 0.00</div>
+                        </div>
+                    </div>
+
+                    <!-- Losses Section -->
+                    <div class="report-section" style="background: var(--gray-50); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--danger-color);">
+                            <i class="fas fa-exclamation-triangle"></i> Stock Losses This Week
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--gray-600);">Total Losses:</span>
+                                <strong id="reportTotalLosses" style="display: block; font-size: 1.3rem; color: var(--danger-color);">0</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--gray-600);">Loss Value:</span>
+                                <strong id="reportLossValue" style="display: block; font-size: 1.3rem; color: var(--danger-color);">R 0.00</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--gray-600);">Damaged:</span>
+                                <strong id="reportDamaged" style="display: block; font-size: 1.3rem;">0</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--gray-600);">Stolen:</span>
+                                <strong id="reportStolen" style="display: block; font-size: 1.3rem;">0</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--gray-600);">Expired:</span>
+                                <strong id="reportExpired" style="display: block; font-size: 1.3rem;">0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stock Alerts -->
+                    <div class="report-section" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+                        <div style="background: var(--warning-light); padding: 1rem; border-radius: 8px;">
+                            <h5 style="color: var(--warning-color); margin-bottom: 0.5rem;">
+                                <i class="fas fa-exclamation-triangle"></i> Low Stock Items
+                            </h5>
+                            <div style="font-size: 2rem; font-weight: 600; color: var(--warning-color);" id="reportLowStock">0</div>
+                        </div>
+                        <div style="background: var(--danger-light); padding: 1rem; border-radius: 8px;">
+                            <h5 style="color: var(--danger-color); margin-bottom: 0.5rem;">
+                                <i class="fas fa-times-circle"></i> Out of Stock
+                            </h5>
+                            <div style="font-size: 2rem; font-weight: 600; color: var(--danger-color);" id="reportOutOfStock">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Top Products -->
+                    <div class="report-section" style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem;"><i class="fas fa-trophy"></i> Top 10 Products by Value</h4>
+                        <div class="table-responsive">
+                            <table class="inventory-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Units</th>
+                                        <th>Cost Value</th>
+                                        <th>Sell Value</th>
+                                        <th>Potential Profit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportTopProductsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn-secondary" id="closeReportPreview">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                        <button class="btn-primary" id="downloadReportBtn">
+                            <i class="fas fa-download"></i> Download Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div class="modal" id="scannerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Scan Barcode</h2>
+                <button class="close-btn" id="closeScannerModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="scanner-container">
+                    <div id="interactive" class="viewport"></div>
+                </div>
+                <div class="scanner-result">
+                    <p>Position the barcode within the frame</p>
+                    <div id="scannerResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change History Modal -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Inventory Change History</h2>
+                <button class="close-btn" id="closeHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="history-filters">
+                    <input type="date" id="historyDateFrom" placeholder="From Date">
+                    <input type="date" id="historyDateTo" placeholder="To Date">
+                    <select id="historyUserFilter">
+                        <option value="all">All Users</option>
+                    </select>
+                    <button class="btn-primary" id="applyHistoryFilter">
+                        <i class="fas fa-filter"></i> Apply Filter
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Product</th>
+                                <th>Action</th>
+                                <th>Changed By</th>
+                                <th>Old Value</th>
+                                <th>New Value</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No change history available
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Action completed successfully!</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred!</span>
+    </div>
+
+    <script type="module" src="../Script/inventorystockfollowup.js"></script>
+    <script type="module" src="../Script/stockfollowup.js"></script>
+</body>
+</html>

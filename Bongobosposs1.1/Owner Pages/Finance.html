@@ -1,0 +1,647 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Finance Management">
+    <title>Finance Management - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/finance.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for financial charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading finance data...</p>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="businessType">-</div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="Dashboard.html" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Authentication Pages/UserProfile.html" class="menu-link">
+                    <i class="fas fa-user"></i>
+                    <span>Business Profile</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dasboard/AddBranch.html" class="menu-link">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Add Branch</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dashboard/AddUsers.html" class="menu-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Users</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>POS</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-receipt"></i>
+                    <span>Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="Inventory Managament.html" class="menu-link">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="Finance.html" class="menu-link active">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finances</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="ChangeManagement.html" class="menu-link">
+                    <i class="fas fa-wallet"></i>
+                    <span>Change Manangement</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Finance Management</h1>
+                    <p id="welcomeMessage">Track profits, expenses, and manage payments</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="refresh-btn" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Refresh</span>
+                </button>
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Finance Content -->
+        <div class="finance-content">
+            <!-- Financial Summary Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <span class="stat-title">Cash on Hand</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="cashOnHand">R 0.00</div>
+                    <div class="stat-change">
+                        <span id="cashChange">Available balance</span>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Revenue</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalRevenue">R 0.00</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span id="revenueChange">This month</span>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Expenses</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-circle-down"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalExpenses">R 0.00</div>
+                    <div class="stat-change negative">
+                        <i class="fas fa-arrow-down"></i>
+                        <span id="expensesChange">This month</span>
+                    </div>
+                </div>
+
+                <div class="stat-card accent">
+                    <div class="stat-header">
+                        <span class="stat-title">Net Profit</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="netProfit">R 0.00</div>
+                    <div class="stat-change">
+                        <span id="profitMargin">0% margin</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="finance-actions">
+                <button class="action-btn primary" id="requestPaymentBtn">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>Request Payment</span>
+                </button>
+                <button class="action-btn secondary" id="recordExpenseBtn">
+                    <i class="fas fa-receipt"></i>
+                    <span>Record Expense</span>
+                </button>
+                <button class="action-btn" id="viewPaymentsBtn">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Payment Requests</span>
+                </button>
+                <button class="action-btn" id="viewExpensesBtn">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>View Expenses</span>
+                </button>
+                <button class="action-btn" id="financialReportBtn">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Financial Report</span>
+                </button>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Revenue vs Expenses</h3>
+                        <select id="chartPeriod">
+                            <option value="week">This Week</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                        </select>
+                    </div>
+                    <canvas id="revenueExpensesChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Expense Breakdown</h3>
+                        <select id="expensePeriod">
+                            <option value="month" selected>This Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                        </select>
+                    </div>
+                    <canvas id="expenseBreakdownChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Pending Payment Requests Section -->
+            <div class="pending-requests-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-clock"></i> Pending Payment Requests
+                    </h3>
+                    <span class="badge" id="pendingCount">0</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Requested By</th>
+                                <th>Amount</th>
+                                <th>Purpose</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingRequestsBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No pending requests
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="transactions-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-history"></i> Recent Transactions
+                    </h3>
+                    <button class="btn-secondary" id="viewAllTransactions">View All</button>
+                </div>
+
+                <div class="transactions-list" id="transactionsList">
+                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                        No recent transactions
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Request Payment Modal -->
+    <div class="modal" id="requestPaymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Request Payment</h2>
+                <button class="close-btn" id="closeRequestPaymentModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="requestPaymentForm">
+                    <div class="form-group">
+                        <label for="requestAmount">Amount *</label>
+                        <div class="input-with-icon">
+                            <span class="currency-symbol">R</span>
+                            <input type="number" id="requestAmount" step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestPurpose">Purpose *</label>
+                        <select id="requestPurpose" required>
+                            <option value="">Select purpose</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="supplies">Office Supplies</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="travel">Travel</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestDescription">Description *</label>
+                        <textarea id="requestDescription" rows="3" required placeholder="Provide details about this payment request"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="requestNotes">Additional Notes</label>
+                        <textarea id="requestNotes" rows="2" placeholder="Optional: Any additional information"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelRequestPayment">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitRequestPayment">
+                            <span class="btn-text">
+                                <i class="fas fa-paper-plane"></i> Submit Request
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Expense Modal -->
+    <div class="modal" id="recordExpenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Record Expense</h2>
+                <button class="close-btn" id="closeRecordExpenseModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="recordExpenseForm">
+                    <div class="form-group">
+                        <label for="expenseType">Expense Type *</label>
+                        <select id="expenseType" required>
+                            <option value="">Select type</option>
+                            <option value="salary">Salary</option>
+                            <option value="water">Water Bill</option>
+                            <option value="electricity">Electricity</option>
+                            <option value="rent">Rent</option>
+                            <option value="petrol">Petrol</option>
+                            <option value="internet">Internet</option>
+                            <option value="phone">Phone</option>
+                            <option value="insurance">Insurance</option>
+                            <option value="supplies">Supplies</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="customExpenseGroup" style="display: none;">
+                        <label for="customExpenseName">Custom Expense Name *</label>
+                        <input type="text" id="customExpenseName" placeholder="Enter expense name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseAmount">Amount *</label>
+                        <div class="input-with-icon">
+                            <span class="currency-symbol">R</span>
+                            <input type="number" id="expenseAmount" step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDate">Date *</label>
+                        <input type="date" id="expenseDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseRecurring">
+                            <input type="checkbox" id="expenseRecurring">
+                            <span>Recurring Expense</span>
+                        </label>
+                    </div>
+
+                    <div id="recurringOptions" style="display: none;">
+                        <div class="form-group">
+                            <label for="recurringFrequency">Frequency</label>
+                            <select id="recurringFrequency">
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDescription">Description *</label>
+                        <textarea id="expenseDescription" rows="3" required placeholder="Enter expense details"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseBranch">Branch *</label>
+                        <select id="expenseBranch" required>
+                            <option value="">Select branch</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelRecordExpense">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitRecordExpense">
+                            <span class="btn-text">
+                                <i class="fas fa-save"></i> Record Expense
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Payment Requests Modal -->
+    <div class="modal" id="viewPaymentsModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Payment Requests</h2>
+                <button class="close-btn" id="closeViewPaymentsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters -->
+                <div class="filters-section">
+                    <select id="paymentStatusFilter">
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <select id="paymentPeriodFilter">
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                        <option value="quarter">This Quarter</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+
+                <!-- Payment Requests Table -->
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Requested By</th>
+                                <th>Amount</th>
+                                <th>Purpose</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Authorized By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allPaymentsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Expenses Modal -->
+    <div class="modal" id="viewExpensesModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Expense Records</h2>
+                <button class="close-btn" id="closeViewExpensesModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Summary Cards -->
+                <div class="expense-summary">
+                    <div class="summary-card">
+                        <div class="summary-label">Total Expenses</div>
+                        <div class="summary-value" id="summaryTotalExpenses">R 0.00</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Recurring Expenses</div>
+                        <div class="summary-value" id="summaryRecurringExpenses">R 0.00</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">One-time Expenses</div>
+                        <div class="summary-value" id="summaryOneTimeExpenses">R 0.00</div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-section">
+                    <select id="expenseTypeFilter">
+                        <option value="all">All Types</option>
+                        <option value="salary">Salary</option>
+                        <option value="water">Water</option>
+                        <option value="electricity">Electricity</option>
+                        <option value="rent">Rent</option>
+                        <option value="petrol">Petrol</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <select id="expensePeriodFilter">
+                        <option value="month">This Month</option>
+                        <option value="quarter">This Quarter</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <select id="expenseBranchFilter">
+                        <option value="all">All Branches</option>
+                    </select>
+                </div>
+
+                <!-- Expenses Table -->
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Description</th>
+                                <th>Branch</th>
+                                <th>Recurring</th>
+                                <th>Recorded By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allExpensesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Report Modal -->
+    <div class="modal" id="financialReportModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Financial Report</h2>
+                <button class="close-btn" id="closeFinancialReportModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="report-options">
+                    <div class="form-group">
+                        <label>Report Period</label>
+                        <select id="reportPeriod">
+                            <option value="month">This Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+
+                    <div id="customDateRange" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="reportStartDate">
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" id="reportEndDate">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="generateReportBtn">
+                        <i class="fas fa-file-alt"></i> Generate Report
+                    </button>
+                </div>
+
+                <div id="reportPreview" style="display: none;">
+                    <!-- Report content will be generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Action completed successfully!</span>
+    </div>
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred!</span>
+    </div>
+
+    <script type="module" src="../Script/finance.js"></script>
+</body>
+</html>

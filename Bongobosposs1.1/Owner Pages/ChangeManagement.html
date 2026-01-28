@@ -1,0 +1,731 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Change Management">
+    <title>Change Management - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/finance.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading change management...</p>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="businessType">-</div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="Dashboard.html" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Authentication Pages/UserProfile.html" class="menu-link">
+                    <i class="fas fa-user"></i>
+                    <span>Business Profile</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dasboard/AddBranch.html" class="menu-link">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Add Branch</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dashboard/AddUsers.html" class="menu-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Users</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>POS</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-receipt"></i>
+                    <span>Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="InventoryManagement.html" class="menu-link">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="Finance.html" class="menu-link">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finances</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="ChangeManagement.html" class="menu-link active">
+                    <i class="fas fa-coins"></i>
+                    <span>Change Management</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Change Management</h1>
+                    <p id="welcomeMessage">Track daily cash and coins on hand</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <button class="refresh-btn" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Refresh</span>
+                </button>
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Management Content -->
+        <div class="finance-content">
+            <!-- Summary Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <span class="stat-title">Today's Change</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="todaysChange">R 0.00</div>
+                    <div class="stat-change">
+                        <span id="todaysStatus">Not recorded</span>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <span class="stat-title">Average Daily Change</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="avgChange">R 0.00</div>
+                    <div class="stat-change positive">
+                        <span id="avgPeriod">Last 30 days</span>
+                    </div>
+                </div>
+
+                <div class="stat-card accent">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Coins</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalCoins">R 0.00</div>
+                    <div class="stat-change">
+                        <span id="coinsCount">0 pieces</span>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Notes</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalNotes">R 0.00</div>
+                    <div class="stat-change">
+                        <span id="notesCount">0 pieces</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="finance-actions">
+                <button class="action-btn primary" id="recordChangeBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Record Daily Change</span>
+                </button>
+                <button class="action-btn secondary" id="viewHistoryBtn">
+                    <i class="fas fa-history"></i>
+                    <span>View History</span>
+                </button>
+                <button class="action-btn" id="viewReportsBtn">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Change Reports</span>
+                </button>
+                <button class="action-btn" id="archiveOldBtn">
+                    <i class="fas fa-archive"></i>
+                    <span>Archive Old Records</span>
+                </button>
+            </div>
+
+            <!-- Today's Change Section -->
+            <div class="pending-requests-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-calendar-day"></i> Today's Change by Branch
+                    </h3>
+                    <span class="badge" id="branchCount">0</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Branch</th>
+                                <th>Date</th>
+                                <th>Coins</th>
+                                <th>Notes</th>
+                                <th>Total Change</th>
+                                <th>Recorded By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todaysChangeBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-coins" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No change recorded for today
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent Records -->
+            <div class="transactions-section">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class="fas fa-clock"></i> Recent Change Records
+                    </h3>
+                    <select id="recentPeriodFilter" style="padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: 8px;">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Branch</th>
+                                <th>Coins</th>
+                                <th>Notes</th>
+                                <th>Total</th>
+                                <th>Recorded By</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentRecordsBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No recent records
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Record Change Modal -->
+    <div class="modal" id="recordChangeModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="changeModalTitle">Record Daily Change</h2>
+                <button class="close-btn" id="closeRecordChangeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="recordChangeForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="changeDate">Date *</label>
+                            <input type="date" id="changeDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="changeBranch">Branch *</label>
+                            <select id="changeBranch" required>
+                                <option value="">Select branch</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Coins Section -->
+                    <div class="denomination-section">
+                        <h3><i class="fas fa-coins"></i> Coins</h3>
+
+                        <div class="denomination-grid">
+                            <div class="form-group">
+                                <label for="notes">1c (Cents)</label>
+                                <input type="number" id="notes" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="notesValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fiveCents">5c (Cents)</label>
+                                <input type="number" id="fiveCents" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="fiveCentsValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tenCents">10c (Cents)</label>
+                                <input type="number" id="tenCents" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="tenCentsValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="twentyCents">20c (Cents)</label>
+                                <input type="number" id="twentyCents" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="twentyCentsValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fiftyCents">50c (Cents)</label>
+                                <input type="number" id="fiftyCents" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="fiftyCentsValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="oneRand">R1 (Rand Coin)</label>
+                                <input type="number" id="oneRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="oneRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="twoRand">R2 (Rand Coin)</label>
+                                <input type="number" id="twoRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="twoRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fiveRand">R5 (Rand Coin)</label>
+                                <input type="number" id="fiveRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="fiveRandValue">0.00</span></small>
+                            </div>
+                        </div>
+
+                        <div class="denomination-total">
+                            <strong>Total Coins:</strong> R <span id="totalCoinsCalc">0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Notes Section -->
+                    <div class="denomination-section">
+                        <h3><i class="fas fa-money-bill-wave"></i> Notes</h3>
+
+                        <div class="denomination-grid">
+                            <div class="form-group">
+                                <label for="tenRand">R10 (Ten Rand)</label>
+                                <input type="number" id="tenRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="tenRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="twentyRand">R20 (Twenty Rand)</label>
+                                <input type="number" id="twentyRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="twentyRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="fiftyRand">R50 (Fifty Rand)</label>
+                                <input type="number" id="fiftyRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="fiftyRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="hundredRand">R100 (Hundred Rand)</label>
+                                <input type="number" id="hundredRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="hundredRandValue">0.00</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="twoHundredRand">R200 (Two Hundred Rand)</label>
+                                <input type="number" id="twoHundredRand" min="0" value="0" class="denomination-input">
+                                <small class="denomination-value">R <span id="twoHundredRandValue">0.00</span></small>
+                            </div>
+                        </div>
+
+                        <div class="denomination-total">
+                            <strong>Total Notes:</strong> R <span id="totalNotesCalc">0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Grand Total -->
+                    <div class="grand-total">
+                        <h2>Total Change on Hand: R <span id="grandTotalCalc">0.00</span></h2>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelRecordChange">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitRecordChange">
+                            <span class="btn-text">
+                                <i class="fas fa-save"></i> Save Change Record
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View History Modal -->
+    <div class="modal" id="viewHistoryModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Change History</h2>
+                <button class="close-btn" id="closeViewHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Filters -->
+                <div class="filters-section">
+                    <input type="date" id="historyStartDate" placeholder="Start Date">
+                    <input type="date" id="historyEndDate" placeholder="End Date">
+                    <select id="historyBranchFilter">
+                        <option value="all">All Branches</option>
+                    </select>
+                    <button class="btn-primary" id="applyHistoryFilter">
+                        <i class="fas fa-filter"></i> Apply Filter
+                    </button>
+                </div>
+
+                <!-- History Table -->
+                <div class="table-responsive">
+                    <table class="finance-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Branch</th>
+                                <th>Coins</th>
+                                <th>Notes</th>
+                                <th>Total</th>
+                                <th>Recorded By</th>
+                                <th>Recorded At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Reports Modal -->
+    <div class="modal" id="viewReportsModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Change Reports</h2>
+                <button class="close-btn" id="closeViewReportsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Report Options -->
+                <div class="report-options">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="reportStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="reportEndDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Branch</label>
+                            <select id="reportBranchFilter">
+                                <option value="all">All Branches</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-primary" id="generateChangeReport">
+                        <i class="fas fa-chart-bar"></i> Generate Report
+                    </button>
+                </div>
+
+                <!-- Report Preview -->
+                <div id="reportPreview" style="display: none;">
+                    <div class="expense-summary">
+                        <div class="summary-card">
+                            <div class="summary-label">Total Records</div>
+                            <div class="summary-value" id="reportTotalRecords">0</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Average Change</div>
+                            <div class="summary-value" id="reportAvgChange">R 0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Highest Change</div>
+                            <div class="summary-value" id="reportHighest">R 0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Lowest Change</div>
+                            <div class="summary-value" id="reportLowest">R 0.00</div>
+                        </div>
+                    </div>
+
+                    <!-- Denomination Breakdown -->
+                    <div class="denomination-breakdown">
+                        <h3>Denomination Breakdown</h3>
+                        <div class="breakdown-grid">
+                            <div class="breakdown-card">
+                                <h4><i class="fas fa-coins"></i> Coins</h4>
+                                <table>
+                                    <tr><td>1c:</td><td id="breakdown1c">0</td></tr>
+                                    <tr><td>5c:</td><td id="breakdown5c">0</td></tr>
+                                    <tr><td>10c:</td><td id="breakdown10c">0</td></tr>
+                                    <tr><td>20c:</td><td id="breakdown20c">0</td></tr>
+                                    <tr><td>50c:</td><td id="breakdown50c">0</td></tr>
+                                    <tr><td>R1:</td><td id="breakdownR1">0</td></tr>
+                                    <tr><td>R2:</td><td id="breakdownR2">0</td></tr>
+                                    <tr><td>R5:</td><td id="breakdownR5">0</td></tr>
+                                </table>
+                            </div>
+                            <div class="breakdown-card">
+                                <h4><i class="fas fa-money-bill-wave"></i> Notes</h4>
+                                <table>
+                                    <tr><td>R10:</td><td id="breakdownR10">0</td></tr>
+                                    <tr><td>R20:</td><td id="breakdownR20">0</td></tr>
+                                    <tr><td>R50:</td><td id="breakdownR50">0</td></tr>
+                                    <tr><td>R100:</td><td id="breakdownR100">0</td></tr>
+                                    <tr><td>R200:</td><td id="breakdownR200">0</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Action completed successfully!</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred!</span>
+    </div>
+
+    <style>
+        .denomination-section {
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+            .denomination-section h3 {
+                margin-bottom: 1rem;
+                color: var(--dark-text);
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+        .denomination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .denomination-input {
+            width: 100%;
+        }
+
+        .denomination-value {
+            display: block;
+            margin-top: 0.3rem;
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .denomination-total {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 1.1rem;
+            color: var(--dark-text);
+        }
+
+            .denomination-total span {
+                color: var(--secondary-color);
+                font-weight: 700;
+                font-size: 1.2rem;
+            }
+
+        .grand-total {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            color: var(--white);
+            margin-bottom: 1.5rem;
+        }
+
+            .grand-total h2 {
+                margin: 0;
+                font-size: 2rem;
+            }
+
+            .grand-total span {
+                font-size: 2.5rem;
+                font-weight: 800;
+            }
+
+        .denomination-breakdown {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--gray-50);
+            border-radius: 10px;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .breakdown-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: var(--shadow-sm);
+        }
+
+            .breakdown-card h4 {
+                margin-bottom: 1rem;
+                color: var(--dark-text);
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .breakdown-card table {
+                width: 100%;
+            }
+
+                .breakdown-card table td {
+                    padding: 0.5rem;
+                    border-bottom: 1px solid var(--gray-200);
+                }
+
+                    .breakdown-card table td:first-child {
+                        font-weight: 600;
+                        color: var(--gray-700);
+                    }
+
+                    .breakdown-card table td:last-child {
+                        text-align: right;
+                        color: var(--secondary-color);
+                        font-weight: 600;
+                    }
+
+        @media (max-width: 768px) {
+            .denomination-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .grand-total h2 {
+                font-size: 1.5rem;
+            }
+
+            .grand-total span {
+                font-size: 2rem;
+            }
+
+            .breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script type="module" src="../Script/ChangeManagement.js"></script>
+    <script type="module" src="../Script/ChangeManagementUI.js"></script>
+</body>
+</html>

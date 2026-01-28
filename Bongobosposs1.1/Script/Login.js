@@ -123,7 +123,7 @@ async function handleUserRedirect(user) {
 
                 case 'employee':
                     // Employee - limited access
-                    window.location.href = '../Dashboard/DashboardEmployee.html';
+                    window.location.href = '../Employee Pages/DashboardEmployee.html';
                     break;
 
                 case 'manager':
