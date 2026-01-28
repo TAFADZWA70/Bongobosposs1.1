@@ -1,10 +1,594 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Employee Dashboard">
+    <title>POS - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/employee.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading POS...</p>
+    </div>
 
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss POS</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="branchName">-</div>
+        </div>
+
+        <!-- Employee Info -->
+        <div class="employee-info">
+            <div class="employee-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="employee-details">
+                <div class="employee-name" id="employeeName">Employee</div>
+                <div class="employee-role" id="employeeRole">Cashier</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="#" class="menu-link active">
+                    <i class="fas fa-cash-register"></i>
+                    <span>Point of Sale</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="todaysSalesBtn">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Today's Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="expenseRequestBtn">
+                    <i class="fas fa-receipt"></i>
+                    <span>Request Expense</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="salesHistoryBtn">
+                    <i class="fas fa-history"></i>
+                    <span>Sales History</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Shift Info -->
+        <div class="shift-info">
+            <div class="shift-status">
+                <i class="fas fa-clock"></i>
+                <span id="shiftTime">00:00:00</span>
+            </div>
+            <div class="shift-sales">
+                <i class="fas fa-coins"></i>
+                <span id="shiftSales">R 0.00</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Point of Sale</h1>
+                    <p id="welcomeMessage">Ready to serve customers</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="current-time" id="currentTime">
+                    <i class="fas fa-clock"></i>
+                    <span>00:00:00</span>
+                </div>
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- POS Content -->
+        <div class="pos-container">
+            <!-- Left Side - Product Search & Cart -->
+            <div class="pos-left">
+                <!-- Search Section -->
+                <div class="search-section">
+                    <div class="search-box-wrapper">
+                        <div class="search-input-group">
+                            <div class="search-input-wrapper">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="productSearch" placeholder="Search product by name, SKU, or scan barcode..." autofocus>
+                            </div>
+                            <button class="scan-btn" id="scanBarcodeBtn">
+                                <i class="fas fa-barcode"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Product Suggestions -->
+                    <div class="product-suggestions" id="productSuggestions"></div>
+                </div>
+
+                <!-- Shopping Cart -->
+                <div class="cart-section">
+                    <div class="cart-header">
+                        <h3>
+                            <i class="fas fa-shopping-cart"></i>
+                            Shopping Cart
+                            <span class="cart-count" id="cartCount">0</span>
+                        </h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="view-cart-btn" id="viewCartBtn" style="display: none;">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                            <button class="clear-cart-btn" id="clearCartBtn">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="cart-items" id="cartItems">
+                        <div class="empty-cart">
+                            <i class="fas fa-shopping-cart"></i>
+                            <p>Cart is empty</p>
+                            <small>Scan or search for products to add</small>
+                        </div>
+                    </div>
+
+                    <div class="cart-summary">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">R 0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tax (15%):</span>
+                            <span id="taxAmount">R 0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total:</span>
+                            <span id="cartTotal">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <button class="checkout-btn" id="checkoutBtn" disabled>
+                        <i class="fas fa-check-circle"></i>
+                        Proceed to Payment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side - Quick Stats & Actions -->
+            <div class="pos-right">
+                <!-- Today's Stats -->
+                <div class="stats-cards">
+                    <div class="stat-card primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Today's Sales</span>
+                            <span class="stat-value" id="todaysSalesAmount">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card success">
+                        <div class="stat-icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Transactions</span>
+                            <span class="stat-value" id="transactionsCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions-section">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                    <div class="action-grid">
+                        <button class="action-card" id="newSaleBtn">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>New Sale</span>
+                        </button>
+                        <button class="action-card" id="viewInventoryBtn">
+                            <i class="fas fa-boxes"></i>
+                            <span>View Stock</span>
+                        </button>
+                        <button class="action-card" id="requestExpenseBtn">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Request Expense</span>
+                        </button>
+                        <button class="action-card" id="endShiftBtn">
+                            <i class="fas fa-power-off"></i>
+                            <span>End Shift</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="recent-transactions-section">
+                    <h3><i class="fas fa-history"></i> Recent Sales</h3>
+                    <div class="recent-list" id="recentSalesList">
+                        <div class="empty-state-small">
+                            <i class="fas fa-receipt"></i>
+                            <p>No sales yet today</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-credit-card"></i> Process Payment</h2>
+                <button class="close-btn" id="closePaymentModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Payment Summary -->
+                <div class="payment-summary">
+                    <div class="payment-total-display">
+                        <span>Total Amount Due</span>
+                        <div class="payment-total-amount" id="paymentTotalAmount">R 0.00</div>
+                    </div>
+
+                    <div class="payment-breakdown">
+                        <div class="breakdown-row">
+                            <span>Subtotal:</span>
+                            <span id="paymentSubtotal">R 0.00</span>
+                        </div>
+                        <div class="breakdown-row">
+                            <span>Tax (15%):</span>
+                            <span id="paymentTax">R 0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Amount Buttons -->
+                <div class="quick-amounts">
+                    <h4>Quick Amount</h4>
+                    <div class="amount-grid">
+                        <button class="amount-btn" data-amount="20">R20</button>
+                        <button class="amount-btn" data-amount="50">R50</button>
+                        <button class="amount-btn" data-amount="100">R100</button>
+                        <button class="amount-btn" data-amount="200">R200</button>
+                        <button class="amount-btn" data-amount="500">R500</button>
+                        <button class="amount-btn exact-btn">Exact</button>
+                    </div>
+                </div>
+
+                <!-- Payment Input -->
+                <div class="payment-input-section">
+                    <div class="form-group">
+                        <label for="amountPaid">Amount Paid</label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">R</span>
+                            <input type="number" id="amountPaid" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="change-display" id="changeDisplay" style="display: none;">
+                        <div class="change-label">Change Due</div>
+                        <div class="change-amount" id="changeAmount">R 0.00</div>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="payment-method-section">
+                    <h4>Payment Method</h4>
+                    <div class="method-grid">
+                        <label class="method-card">
+                            <input type="radio" name="paymentMethod" value="cash" checked>
+                            <div class="method-content">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>Cash</span>
+                            </div>
+                        </label>
+                        <label class="method-card">
+                            <input type="radio" name="paymentMethod" value="card">
+                            <div class="method-content">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Card</span>
+                            </div>
+                        </label>
+                        <label class="method-card">
+                            <input type="radio" name="paymentMethod" value="mobile">
+                            <div class="method-content">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Mobile</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancelPaymentBtn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn-primary" id="completeSaleBtn" disabled>
+                        <span class="btn-text">
+                            <i class="fas fa-check-circle"></i> Complete Sale
+                        </span>
+                        <span class="btn-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Request Modal -->
+    <div class="modal" id="expenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-invoice-dollar"></i> Request Expense Payment</h2>
+                <button class="close-btn" id="closeExpenseModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Request Authorization</strong>
+                        <p>This request will be sent to admin/owner for approval before payment is made.</p>
+                    </div>
+                </div>
+
+                <form id="expenseRequestForm">
+                    <div class="form-group">
+                        <label for="expenseAmount">Amount *</label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">R</span>
+                            <input type="number" id="expenseAmount" step="0.01" min="0" required placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expensePurpose">Purpose *</label>
+                        <select id="expensePurpose" required>
+                            <option value="">Select purpose</option>
+                            <option value="supplies">Office Supplies</option>
+                            <option value="utilities">Utilities</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="transport">Transport</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseDescription">Description *</label>
+                        <textarea id="expenseDescription" rows="3" required placeholder="Describe what this expense is for..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseNotes">Additional Notes</label>
+                        <textarea id="expenseNotes" rows="2" placeholder="Any additional information..."></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelExpenseBtn">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitExpenseBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-paper-plane"></i> Submit Request
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales History Modal -->
+    <div class="modal" id="salesHistoryModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Sales History</h2>
+                <button class="close-btn" id="closeSalesHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="history-filters">
+                    <select id="historyPeriodFilter">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Receipt #</th>
+                                <th>Items</th>
+                                <th>Amount</th>
+                                <th>Payment</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesHistoryBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No sales history
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory View Modal -->
+    <div class="modal" id="inventoryModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-boxes"></i> Current Stock Levels</h2>
+                <button class="close-btn" id="closeInventoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="inventorySearch" placeholder="Search products...">
+                </div>
+
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-boxes" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    Loading inventory...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div class="modal" id="scannerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-barcode"></i> Scan EAN-13 Barcode</h2>
+                <button class="close-btn" id="closeScannerModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box" style="margin-bottom: 1rem;">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Position the barcode in the camera view</strong>
+                        <p>The scanner will automatically detect 13-digit EAN barcodes used in South Africa.</p>
+                    </div>
+                </div>
+                <div id="scanner-container">
+                    <div id="interactive" class="viewport"></div>
+                </div>
+                <div id="scannerResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Details Modal -->
+    <div class="modal" id="cartModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-shopping-cart"></i>
+                    Shopping Cart
+                    <span class="cart-count" id="cartModalCount" style="margin-left: 0.5rem;">0</span>
+                </h2>
+                <button class="close-btn" id="closeCartModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="cart-modal-items" id="cartModalItems">
+                    <div class="empty-cart">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Cart is empty</p>
+                        <small>Scan or search for products to add</small>
+                    </div>
+                </div>
+
+                <div class="cart-modal-summary">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="modalSubtotal">R 0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Tax (15%):</span>
+                        <span id="modalTaxAmount">R 0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total:</span>
+                        <span id="modalCartTotal">R 0.00</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="clearCartModalBtn">
+                        <i class="fas fa-trash"></i> Clear Cart
+                    </button>
+                    <button class="btn-primary" id="checkoutModalBtn" disabled>
+                        <i class="fas fa-check-circle"></i> Proceed to Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">Error!</span>
+    </div>
+
+    <!-- Barcode Scanner Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script type="module" src="../Script/employeedashboard.js"></script>
 </body>
 </html>

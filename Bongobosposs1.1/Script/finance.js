@@ -162,7 +162,7 @@ async function loadUserData() {
         );
 
         await loadFinanceData();
-        updateDashboardStats();
+        await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
         setupCharts();
@@ -274,8 +274,8 @@ async function loadFinanceData() {
     }
 }
 
-// Update dashboard statistics
-function updateDashboardStats() {
+// Update dashboard statistics  
+async function updateDashboardStats() {
     const currency = businessData?.currency || 'R';
 
     // Calculate cash on hand from change management
@@ -309,11 +309,27 @@ function updateDashboardStats() {
         `;
     }
 
-    // Calculate monthly revenue (approved payment requests + other revenue)
+    // Calculate monthly revenue from actual POS sales
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let monthlyRevenue = 0;
+
+    // Fetch real sales data from POS system
+    const salesRef = ref(db, `businesses/${businessId}/sales`);
+    const salesSnap = await get(salesRef);
+
+    if (salesSnap.exists()) {
+        const allSales = salesSnap.val();
+        Object.values(allSales).forEach(sale => {
+            const saleDate = new Date(sale.soldAt || sale.date);
+            if (saleDate >= startOfMonth) {
+                monthlyRevenue += sale.total || 0;
+            }
+        });
+    }
+
+    // Also add any manual revenue transactions
     transactions.forEach(transaction => {
         if (transaction.type === 'revenue' && new Date(transaction.timestamp) >= startOfMonth) {
             monthlyRevenue += transaction.amount;
@@ -321,8 +337,35 @@ function updateDashboardStats() {
     });
 
     const totalRevenueEl = document.getElementById('totalRevenue');
+    const revenueChangeEl = document.getElementById('revenueChange');
     if (totalRevenueEl) {
         totalRevenueEl.textContent = `${currency} ${monthlyRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    }
+    if (revenueChangeEl) {
+        // Calculate last month revenue for comparison
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        let lastMonthRevenue = 0;
+
+        if (salesSnap.exists()) {
+            const allSales = salesSnap.val();
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date);
+                if (saleDate >= lastMonthStart && saleDate <= lastMonthEnd) {
+                    lastMonthRevenue += sale.total || 0;
+                }
+            });
+        }
+
+        const revenueChange = lastMonthRevenue > 0
+            ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+            : 0;
+
+        revenueChangeEl.innerHTML = `
+            <i class="fas fa-arrow-${revenueChange >= 0 ? 'up' : 'down'}"></i>
+            ${revenueChange >= 0 ? '+' : ''}${revenueChange}% vs last month
+        `;
+        revenueChangeEl.className = revenueChange >= 0 ? 'stat-change positive' : 'stat-change negative';
     }
 
     // Calculate monthly expenses
@@ -341,8 +384,41 @@ function updateDashboardStats() {
     });
 
     const totalExpensesEl = document.getElementById('totalExpenses');
+    const expensesChangeEl = document.getElementById('expensesChange');
     if (totalExpensesEl) {
         totalExpensesEl.textContent = `${currency} ${monthlyExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    }
+    if (expensesChangeEl) {
+        // Calculate last month expenses for comparison
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        let lastMonthExpenses = 0;
+
+        Object.values(expenses).forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            if (expenseDate >= lastMonthStart && expenseDate <= lastMonthEnd) {
+                lastMonthExpenses += expense.amount;
+            }
+        });
+
+        Object.values(paymentRequests).forEach(request => {
+            if (request.status === 'approved') {
+                const approvalDate = new Date(request.authorizedAt);
+                if (approvalDate >= lastMonthStart && approvalDate <= lastMonthEnd) {
+                    lastMonthExpenses += request.amount;
+                }
+            }
+        });
+
+        const expensesChange = lastMonthExpenses > 0
+            ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1)
+            : 0;
+
+        expensesChangeEl.innerHTML = `
+            <i class="fas fa-arrow-${expensesChange >= 0 ? 'up' : 'down'}"></i>
+            ${expensesChange >= 0 ? '+' : ''}${expensesChange}% vs last month
+        `;
+        expensesChangeEl.className = expensesChange >= 0 ? 'stat-change negative' : 'stat-change positive';
     }
 
     // Calculate net profit
@@ -357,6 +433,7 @@ function updateDashboardStats() {
     }
     if (profitMarginEl) {
         profitMarginEl.textContent = `${profitMargin}% margin`;
+        profitMarginEl.style.color = parseFloat(profitMargin) >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
     }
 }
 
@@ -798,7 +875,7 @@ window.approvePayment = async function (requestId) {
 
         showToast('Payment request approved', 'success');
         await loadFinanceData();
-        updateDashboardStats();
+        await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
 
@@ -846,7 +923,7 @@ window.rejectPayment = async function (requestId) {
 
         showToast('Payment request rejected', 'success');
         await loadFinanceData();
-        updateDashboardStats();
+        await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
 
@@ -995,7 +1072,7 @@ const refreshBtn = document.getElementById('refreshBtn');
 if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
         await loadFinanceData();
-        updateDashboardStats();
+        await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
         setupCharts();
@@ -1036,7 +1113,7 @@ if (requestPaymentForm) {
             if (modal) modal.classList.remove('active');
             requestPaymentForm.reset();
 
-            updateDashboardStats();
+            await updateDashboardStats();
             displayPendingRequests();
             displayRecentTransactions();
 
@@ -1115,7 +1192,7 @@ if (recordExpenseForm) {
             if (modal) modal.classList.remove('active');
             recordExpenseForm.reset();
 
-            updateDashboardStats();
+            await updateDashboardStats();
             displayRecentTransactions();
             setupCharts();
 
@@ -1349,4 +1426,4 @@ if (closeFinancialReportModal) {
     });
 }
 
-console.log('BongoBoss POS - Finance Management with Change Integration Initialized ✓');
+console.log('BongoBoss POS - Finance Management with Real Sales Data Integration Initialized ✓');

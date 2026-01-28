@@ -1,0 +1,584 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Stock Taking">
+    <title>Stock Taking - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/inventory.css">
+    <link href="../Css/stocktaking.css" rel="stylesheet" />
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading stock taking...</p>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="businessType">-</div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="../Dashboard/DashboardOwner.html" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Authentication Pages/UserProfile.html" class="menu-link">
+                    <i class="fas fa-user"></i>
+                    <span>Business Profile</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dasboard/AddBranch.html" class="menu-link">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Add Branch</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dashboard/AddUsers.html" class="menu-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Users</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>POS</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-receipt"></i>
+                    <span>Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="InventoryManagement.html" class="menu-link">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="StockTaking.html" class="menu-link active">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Stock Taking</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Owner Pages/Finance.html" class="menu-link">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finances</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Stock Taking</h1>
+                    <p id="welcomeMessage">Physical inventory verification and reconciliation</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Taking Content -->
+        <div class="inventory-content">
+            <!-- Schedule Info Banner -->
+            <div class="schedule-banner" id="scheduleBanner" style="display: none;">
+                <div class="schedule-info-content">
+                    <i class="fas fa-calendar-check"></i>
+                    <div>
+                        <strong>Stock Taking Schedule</strong>
+                        <p id="scheduleText">Not configured</p>
+                    </div>
+                </div>
+                <button class="btn-primary" id="editScheduleBtn">
+                    <i class="fas fa-edit"></i> Edit Schedule
+                </button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <span class="stat-title">Active Sessions</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="activeSessions">0</div>
+                    <div class="stat-change">
+                        <span id="sessionsText">No sessions in progress</span>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <span class="stat-title">Last Completed</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="lastCompleted" style="font-size: 1rem;">Never</div>
+                    <div class="stat-change">
+                        <span id="lastCompletedBranch">-</span>
+                    </div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-header">
+                        <span class="stat-title">Next Due</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="nextDue" style="font-size: 1rem;">Not scheduled</div>
+                    <div class="stat-change">
+                        <span id="dueStatus">Set up schedule</span>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Sessions</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalSessions">0</div>
+                    <div class="stat-change">
+                        <span id="totalSessionsText">All time</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="inventory-actions">
+                <button class="action-btn primary" id="newSessionBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>New Stock Taking</span>
+                </button>
+                <button class="action-btn secondary" id="setScheduleBtn">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Set Schedule</span>
+                </button>
+                <button class="action-btn" id="viewHistoryBtn">
+                    <i class="fas fa-history"></i>
+                    <span>View History</span>
+                </button>
+            </div>
+
+            <!-- Active Sessions Section -->
+            <div class="products-section" id="activeSessionsSection" style="display: none;">
+                <div class="section-header">
+                    <h3 class="section-title">Active Sessions</h3>
+                </div>
+                <div id="activeSessionsList"></div>
+            </div>
+
+            <!-- Session in Progress -->
+            <div class="products-section" id="sessionInProgress" style="display: none;">
+                <div class="section-header">
+                    <h3 class="section-title">Stock Taking Session</h3>
+                    <div>
+                        <button class="btn-secondary" id="cancelSessionBtn">
+                            <i class="fas fa-ban"></i> Cancel
+                        </button>
+                        <button class="btn-primary" id="completeSessionBtn">
+                            <i class="fas fa-check-circle"></i> Complete
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Session Info -->
+                <div class="session-header" id="sessionHeaderInfo"></div>
+
+                <!-- Counting Tools -->
+                <div class="counting-toolbar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search products..." id="countingSearch">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" id="filterAll">
+                            All (<span id="countAll">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="pending" id="filterPending">
+                            <i class="fas fa-clock"></i> Pending (<span id="countPending">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="counted" id="filterCounted">
+                            <i class="fas fa-check"></i> Counted (<span id="countCounted">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="variance" id="filterVariance">
+                            <i class="fas fa-exclamation-triangle"></i> Variance (<span id="countVariance">0</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Products Table -->
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Barcode</th>
+                                <th>System Count</th>
+                                <th>Physical Count</th>
+                                <th>Variance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsToCountBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Recent History -->
+            <div class="products-section">
+                <div class="section-header">
+                    <h3 class="section-title">Recent Sessions</h3>
+                </div>
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Session Name</th>
+                                <th>Branch</th>
+                                <th>Date</th>
+                                <th>Products</th>
+                                <th>Variance</th>
+                                <th>Cost Impact</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentHistoryBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-clipboard-list" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No stock taking sessions yet. Start your first session!
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Session Modal -->
+    <div class="modal" id="newSessionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-check"></i> Start Stock Taking Session</h2>
+                <button class="close-btn" id="closeNewSessionModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>What is Stock Taking?</strong>
+                        <p>Physical count of all inventory to verify system records and identify discrepancies like theft, damage, or errors.</p>
+                    </div>
+                </div>
+
+                <form id="newSessionForm">
+                    <div class="form-group">
+                        <label for="sessionBranch">Branch *</label>
+                        <select id="sessionBranch" required>
+                            <option value="">Select branch to count</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sessionName">Session Name</label>
+                        <input type="text" id="sessionName" placeholder="e.g., Weekly Count - January 2026">
+                        <small>Leave blank to auto-generate name</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sessionNotes">Notes</label>
+                        <textarea id="sessionNotes" rows="3" placeholder="Any special notes or instructions..."></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('newSessionModal').classList.remove('active')">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="startSessionBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-play"></i> Start Counting
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set Schedule Modal -->
+    <div class="modal" id="scheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-calendar-alt"></i> Set Stock Taking Schedule</h2>
+                <button class="close-btn" id="closeScheduleModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>
+                        <strong>Regular Stock Taking</strong>
+                        <p>Set how often you want to perform stock taking. The system will remind you when it's due.</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="scheduleFrequency">How often should stock taking be done? *</label>
+                    <select id="scheduleFrequency" required>
+                        <option value="">Select frequency</option>
+                        <option value="weekly">Weekly (Every 7 days)</option>
+                        <option value="fortnightly">Fortnightly (Every 14 days)</option>
+                        <option value="monthly">Monthly (Every month)</option>
+                    </select>
+                </div>
+
+                <div class="schedule-info" style="background: var(--gray-100); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                    <h4 style="margin-bottom: 0.5rem;">
+                        <i class="fas fa-info-circle"></i> What happens next?
+                    </h4>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: var(--gray-700);">
+                        <li>The system will track when stock taking is due</li>
+                        <li>You'll see a notification on this page when it's time</li>
+                        <li>Schedule automatically updates after each session</li>
+                        <li>You can change the frequency anytime</li>
+                    </ul>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="document.getElementById('scheduleModal').classList.remove('active')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn-primary" id="saveScheduleBtn">
+                        <i class="fas fa-calendar-check"></i> Set Schedule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variance Reason Modal -->
+    <div class="modal" id="varianceReasonModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Variance Detected</h2>
+                <button class="close-btn" id="closeVarianceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="variance-alert" id="varianceAlertBox">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div id="varianceAlertContent"></div>
+                </div>
+
+                <form id="varianceReasonForm">
+                    <div class="form-group">
+                        <label for="varianceReason">Reason for Variance *</label>
+                        <select id="varianceReason" required>
+                            <option value="">Select reason</option>
+                            <option value="theft">Theft/Stolen</option>
+                            <option value="damage">Damaged</option>
+                            <option value="error">Counting Error</option>
+                            <option value="expired">Expired/Spoiled</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="varianceNotes">Additional Notes</label>
+                        <textarea id="varianceNotes" rows="3" placeholder="Provide additional details..."></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="skipVarianceBtn">
+                            Skip
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Save Reason
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion Summary Modal -->
+    <div class="modal" id="completionModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Stock Taking Summary</h2>
+                <button class="close-btn" id="closeCompletionModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="summaryContent"></div>
+
+                <div class="completion-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="applyAdjustments" checked>
+                        <span>Apply stock adjustments to inventory (recommended)</span>
+                    </label>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="document.getElementById('completionModal').classList.remove('active')">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="finalizeBtn">
+                        <span class="btn-text">
+                            <i class="fas fa-check"></i> Complete Session
+                        </span>
+                        <span class="btn-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Stock Taking History</h2>
+                <button class="close-btn" id="closeHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="history-filters">
+                    <select id="historyBranchFilter">
+                        <option value="all">All Branches</option>
+                    </select>
+                    <select id="historyStatusFilter">
+                        <option value="all">All Status</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <input type="date" id="historyDateFrom" placeholder="From Date">
+                    <input type="date" id="historyDateTo" placeholder="To Date">
+                    <button class="btn-primary" id="applyHistoryFilter">
+                        <i class="fas fa-filter"></i> Apply Filter
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Branch</th>
+                                <th>Started</th>
+                                <th>Completed</th>
+                                <th>Products</th>
+                                <th>Variance</th>
+                                <th>Impact</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Action completed successfully!</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred!</span>
+    </div>
+
+    <script type="module" src="../Script/stocktaking.js"></script>
+    <script type="module" src="../Script/stocktaking-page.js"></script>
+</body>
+</html>

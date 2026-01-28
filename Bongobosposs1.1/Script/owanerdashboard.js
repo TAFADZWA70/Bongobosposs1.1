@@ -71,6 +71,7 @@ async function loadDashboard() {
         }
 
         businessData = businessSnap.val();
+        businessData.businessId = userData.businessId; // Store businessId for later use
 
         // Update UI with business info
         updateBusinessInfo();
@@ -104,40 +105,120 @@ function updateBusinessInfo() {
         }
 
         // Update welcome message
-        welcomeMessage.textContent = `Welcome back to ${businessData.businessName}!`;
+        if (welcomeMessage) {
+            welcomeMessage.textContent = `Welcome back to ${businessData.businessName}!`;
+        }
     }
 }
 
-// Load dashboard statistics
+// Load dashboard statistics with real Firebase data
 async function loadDashboardStats() {
     try {
-        // In a real app, you would fetch actual data from Firebase
-        // For now, we'll use sample data
+        const businessId = businessData.businessId;
+        const today = new Date().toISOString().split('T')[0];
 
-        // You can implement these functions to fetch real data:
-        // - getTodaysSales()
-        // - getTotalTransactions()
-        // - getLowStockItems()
-        // - getPendingOrders()
-        // - getRecentTransactions()
+        // Fetch real sales data
+        const salesRef = ref(db, `businesses/${businessId}/sales`);
+        const salesSnap = await get(salesRef);
 
-        // Example with sample data:
+        let todaysSales = 0;
+        let yesterdaysSales = 0;
+        let totalTransactionsToday = 0;
+        let totalTransactionsYesterday = 0;
+
+        if (salesSnap.exists()) {
+            const allSales = salesSnap.val();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayDate = yesterday.toISOString().split('T')[0];
+
+            Object.values(allSales).forEach(sale => {
+                if (sale.date === today) {
+                    todaysSales += sale.total || 0;
+                    totalTransactionsToday++;
+                } else if (sale.date === yesterdayDate) {
+                    yesterdaysSales += sale.total || 0;
+                    totalTransactionsYesterday++;
+                }
+            });
+        }
+
+        // Calculate percentage changes
+        const salesChange = yesterdaysSales > 0
+            ? ((todaysSales - yesterdaysSales) / yesterdaysSales * 100).toFixed(1)
+            : 0;
+
+        const transactionsChange = totalTransactionsYesterday > 0
+            ? ((totalTransactionsToday - totalTransactionsYesterday) / totalTransactionsYesterday * 100).toFixed(1)
+            : 0;
+
+        // Fetch inventory data for low stock items
+        const inventoryRef = ref(db, `businesses/${businessId}/inventory/products`);
+        const inventorySnap = await get(inventoryRef);
+
+        let lowStockItems = 0;
+        let criticalItems = 0;
+
+        if (inventorySnap.exists()) {
+            const products = inventorySnap.val();
+            Object.values(products).forEach(product => {
+                if (product.isActive !== false) {
+                    if (product.currentStock === 0) {
+                        criticalItems++;
+                        lowStockItems++;
+                    } else if (product.currentStock <= product.minStock) {
+                        lowStockItems++;
+                    }
+                }
+            });
+        }
+
+        // Fetch pending payment requests
+        const requestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
+        const requestsSnap = await get(requestsRef);
+
+        let pendingOrders = 0;
+        let previousPendingOrders = 0;
+
+        if (requestsSnap.exists()) {
+            const requests = requestsSnap.val();
+            Object.values(requests).forEach(request => {
+                if (request.status === 'pending') {
+                    pendingOrders++;
+                }
+            });
+        }
+
+        const ordersChange = previousPendingOrders - pendingOrders;
+
+        // Update stats with real data
         updateStats({
-            todaysSales: 24580.50,
-            salesChange: 12.5,
-            totalTransactions: 156,
-            transactionsChange: 8.2,
-            lowStockItems: 23,
-            criticalItems: 5,
-            pendingOrders: 12,
-            ordersChange: 3
+            todaysSales: todaysSales,
+            salesChange: parseFloat(salesChange),
+            totalTransactions: totalTransactionsToday,
+            transactionsChange: parseFloat(transactionsChange),
+            lowStockItems: lowStockItems,
+            criticalItems: criticalItems,
+            pendingOrders: pendingOrders,
+            ordersChange: ordersChange
         });
 
-        // Load sample transactions
-        loadRecentTransactions();
+        // Load real transactions
+        await loadRecentTransactions();
 
     } catch (error) {
         console.error('Error loading stats:', error);
+        // Still show some data even if there's an error
+        updateStats({
+            todaysSales: 0,
+            salesChange: 0,
+            totalTransactions: 0,
+            transactionsChange: 0,
+            lowStockItems: 0,
+            criticalItems: 0,
+            pendingOrders: 0,
+            ordersChange: 0
+        });
     }
 }
 
@@ -146,128 +227,172 @@ function updateStats(stats) {
     const currency = businessData?.currency || 'R';
 
     // Today's Sales
-    document.getElementById('todaysSales').textContent =
-        `${currency} ${stats.todaysSales.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    document.getElementById('salesChange').textContent =
-        `${stats.salesChange}% vs yesterday`;
+    const todaysSalesEl = document.getElementById('todaysSales');
+    if (todaysSalesEl) {
+        todaysSalesEl.textContent =
+            `${currency} ${stats.todaysSales.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    const salesChangeEl = document.getElementById('salesChange');
+    if (salesChangeEl) {
+        const changeText = stats.salesChange >= 0 ? `+${stats.salesChange}%` : `${stats.salesChange}%`;
+        salesChangeEl.textContent = `${changeText} vs yesterday`;
+        salesChangeEl.className = stats.salesChange >= 0 ? 'stat-change positive' : 'stat-change negative';
+    }
 
     // Total Transactions
-    document.getElementById('totalTransactions').textContent = stats.totalTransactions;
-    document.getElementById('transactionsChange').textContent =
-        `${stats.transactionsChange}% vs yesterday`;
+    const totalTransactionsEl = document.getElementById('totalTransactions');
+    if (totalTransactionsEl) {
+        totalTransactionsEl.textContent = stats.totalTransactions;
+    }
+
+    const transactionsChangeEl = document.getElementById('transactionsChange');
+    if (transactionsChangeEl) {
+        const changeText = stats.transactionsChange >= 0 ? `+${stats.transactionsChange}%` : `${stats.transactionsChange}%`;
+        transactionsChangeEl.textContent = `${changeText} vs yesterday`;
+        transactionsChangeEl.className = stats.transactionsChange >= 0 ? 'stat-change positive' : 'stat-change negative';
+    }
 
     // Low Stock Items
-    document.getElementById('lowStockItems').textContent = stats.lowStockItems;
-    document.getElementById('criticalItems').textContent =
-        `${stats.criticalItems} items critical`;
+    const lowStockItemsEl = document.getElementById('lowStockItems');
+    if (lowStockItemsEl) {
+        lowStockItemsEl.textContent = stats.lowStockItems;
+    }
+
+    const criticalItemsEl = document.getElementById('criticalItems');
+    if (criticalItemsEl) {
+        criticalItemsEl.textContent = `${stats.criticalItems} items critical`;
+    }
 
     // Pending Orders
-    document.getElementById('pendingOrders').textContent = stats.pendingOrders;
-    document.getElementById('ordersChange').textContent =
-        `${stats.ordersChange} less than yesterday`;
+    const pendingOrdersEl = document.getElementById('pendingOrders');
+    if (pendingOrdersEl) {
+        pendingOrdersEl.textContent = stats.pendingOrders;
+    }
+
+    const ordersChangeEl = document.getElementById('ordersChange');
+    if (ordersChangeEl) {
+        const changeText = stats.ordersChange >= 0
+            ? `${stats.ordersChange} less than yesterday`
+            : `${Math.abs(stats.ordersChange)} more than yesterday`;
+        ordersChangeEl.textContent = changeText;
+    }
 
     // Update notification badge
-    const totalNotifications = stats.lowStockItems + stats.pendingOrders;
-    document.getElementById('notificationBadge').textContent = totalNotifications;
+    const notificationBadgeEl = document.getElementById('notificationBadge');
+    if (notificationBadgeEl) {
+        const totalNotifications = stats.lowStockItems + stats.pendingOrders;
+        notificationBadgeEl.textContent = totalNotifications;
+        notificationBadgeEl.style.display = totalNotifications > 0 ? 'flex' : 'none';
+    }
 }
 
-// Load recent transactions
-function loadRecentTransactions() {
+// Load recent transactions with real data
+async function loadRecentTransactions() {
     const tableBody = document.getElementById('transactionsTableBody');
+    if (!tableBody) return;
+
     const currency = businessData?.currency || 'R';
 
-    // Sample transactions - replace with real data from Firebase
-    const sampleTransactions = [
-        {
-            id: '#TXN-0156',
-            customer: 'John Doe',
-            date: 'Jan 26, 2026 14:32',
-            items: 5,
-            amount: 458.50,
-            payment: 'Card',
-            status: 'completed'
-        },
-        {
-            id: '#TXN-0155',
-            customer: 'Jane Smith',
-            date: 'Jan 26, 2026 14:15',
-            items: 3,
-            amount: 289.00,
-            payment: 'Cash',
-            status: 'completed'
-        },
-        {
-            id: '#TXN-0154',
-            customer: 'Mike Johnson',
-            date: 'Jan 26, 2026 13:45',
-            items: 8,
-            amount: 1245.00,
-            payment: 'Card',
-            status: 'pending'
-        },
-        {
-            id: '#TXN-0153',
-            customer: 'Sarah Williams',
-            date: 'Jan 26, 2026 13:20',
-            items: 2,
-            amount: 156.50,
-            payment: 'Cash',
-            status: 'completed'
-        },
-        {
-            id: '#TXN-0152',
-            customer: 'David Brown',
-            date: 'Jan 26, 2026 12:58',
-            items: 4,
-            amount: 378.00,
-            payment: 'Card',
-            status: 'refunded'
-        }
-    ];
+    try {
+        const businessId = businessData.businessId;
+        const salesRef = ref(db, `businesses/${businessId}/sales`);
+        const salesSnap = await get(salesRef);
 
-    if (sampleTransactions.length === 0) {
+        if (!salesSnap.exists()) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                        No transactions yet
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const allSales = salesSnap.val();
+
+        // Convert to array and sort by date (most recent first)
+        const salesArray = Object.entries(allSales).map(([id, sale]) => ({
+            id: id,
+            ...sale
+        })).sort((a, b) => new Date(b.soldAt) - new Date(a.soldAt));
+
+        // Get last 10 transactions
+        const recentTransactions = salesArray.slice(0, 10);
+
+        if (recentTransactions.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                        No transactions yet
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = recentTransactions.map(transaction => {
+            const date = new Date(transaction.soldAt);
+            const formattedDate = date.toLocaleDateString('en-ZA', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const itemCount = transaction.items ? transaction.items.length : 0;
+            const status = 'completed'; // You can add status field in your sale records if needed
+
+            return `
+                <tr>
+                    <td class="transaction-id">#${transaction.receiptNumber || transaction.id.substring(0, 8)}</td>
+                    <td>${transaction.soldByName || transaction.branchName || 'N/A'}</td>
+                    <td>${formattedDate}</td>
+                    <td>${itemCount} item${itemCount !== 1 ? 's' : ''}</td>
+                    <td>${currency} ${transaction.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    <td>${transaction.paymentMethod ? transaction.paymentMethod.charAt(0).toUpperCase() + transaction.paymentMethod.slice(1) : 'N/A'}</td>
+                    <td><span class="status-badge ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span></td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading transactions:', error);
         tableBody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
-                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                    No transactions yet
+                <td colspan="7" style="text-align: center; padding: 2rem; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    Failed to load transactions
                 </td>
             </tr>
         `;
-        return;
     }
-
-    tableBody.innerHTML = sampleTransactions.map(transaction => `
-        <tr>
-            <td class="transaction-id">${transaction.id}</td>
-            <td>${transaction.customer}</td>
-            <td>${transaction.date}</td>
-            <td>${transaction.items} items</td>
-            <td>${currency} ${transaction.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-            <td>${transaction.payment}</td>
-            <td><span class="status-badge ${transaction.status}">${transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</span></td>
-        </tr>
-    `).join('');
 }
 
 // ===== MOBILE MENU TOGGLE (HAMBURGER STYLE) =====
 const hamburger = document.getElementById('menuToggle');
 const navMenu = document.getElementById('sidebar');
 
-hamburger.addEventListener('click', () => {
-    navMenu.classList.toggle('active');
+if (hamburger && navMenu) {
+    hamburger.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
 
-    // Animate hamburger icon
-    hamburger.classList.toggle('active');
-});
-
-// Close menu when clicking on a link
-document.querySelectorAll('.sidebar .menu-link').forEach(link => {
-    link.addEventListener('click', () => {
-        navMenu.classList.remove('active');
-        hamburger.classList.remove('active');
+        // Animate hamburger icon
+        hamburger.classList.toggle('active');
     });
-});
+
+    // Close menu when clicking on a link
+    document.querySelectorAll('.sidebar .menu-link').forEach(link => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+            hamburger.classList.remove('active');
+        });
+    });
+}
 
 // Add hamburger animation styles
 const style = document.createElement('style');
@@ -307,52 +432,68 @@ filterBtns.forEach(btn => {
         const period = btn.dataset.period;
         console.log('Filter changed to:', period);
         // Here you would reload chart data based on the selected period
+        // You can implement this to filter sales by week, month, or year
     });
 });
 
 // Logout functionality
-document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-    e.preventDefault();
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
 
-    if (confirm('Are you sure you want to logout?')) {
-        try {
-            await signOut(auth);
-            window.location.href = '../Index.html';
-        } catch (error) {
-            console.error('Logout error:', error);
-            alert('Failed to logout. Please try again.');
+        if (confirm('Are you sure you want to logout?')) {
+            try {
+                await signOut(auth);
+                window.location.href = '../Index.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Failed to logout. Please try again.');
+            }
         }
-    }
-});
+    });
+}
 
 // Search functionality
-document.getElementById('searchInput').addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    console.log('Searching for:', searchTerm);
-    // Implement search logic here
-});
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        console.log('Searching for:', searchTerm);
+        // Implement search logic here - you can search through transactions
+        // or other data displayed on the dashboard
+    });
+}
 
-// Real-time updates listener (optional)
+// Real-time updates listener
 function setupRealtimeListeners() {
     if (!currentUser || !businessData) return;
 
+    const businessId = businessData.businessId;
+
     // Listen for sales updates
-    const salesRef = ref(db, `sales/${businessData.businessId}`);
+    const salesRef = ref(db, `businesses/${businessId}/sales`);
     onValue(salesRef, (snapshot) => {
         if (snapshot.exists()) {
-            // Update dashboard with new sales data
-            console.log('Sales data updated');
+            console.log('Sales data updated - refreshing dashboard...');
             loadDashboardStats();
         }
     });
 
     // Listen for inventory updates
-    const inventoryRef = ref(db, `inventory/${businessData.businessId}`);
+    const inventoryRef = ref(db, `businesses/${businessId}/inventory/products`);
     onValue(inventoryRef, (snapshot) => {
         if (snapshot.exists()) {
-            // Update low stock alerts
-            console.log('Inventory data updated');
+            console.log('Inventory data updated - refreshing stats...');
+            loadDashboardStats();
         }
+    });
+
+    // Listen for payment request updates
+    const requestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
+    onValue(requestsRef, (snapshot) => {
+        console.log('Payment requests updated - refreshing stats...');
+        loadDashboardStats();
     });
 }
 
@@ -361,4 +502,4 @@ setTimeout(() => {
     setupRealtimeListeners();
 }, 2000);
 
-console.log('BongoBoss POS - Owner Dashboard Initialized ✓');
+console.log('BongoBoss POS - Owner Dashboard with Real Data Initialized ✓');

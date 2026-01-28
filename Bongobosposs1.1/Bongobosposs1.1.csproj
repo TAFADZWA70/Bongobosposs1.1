@@ -76,11 +76,13 @@
     <Content Include="Css\auth-styles.css" />
     <Content Include="Css\branch.css" />
     <Content Include="Css\dashboard.css" />
+    <Content Include="Css\employee.css" />
     <Content Include="Css\finance.css" />
     <Content Include="Css\forgot.css" />
     <Content Include="Css\index.css" />
     <Content Include="Css\inventory.css" />
     <Content Include="Css\profile.css" />
+    <Content Include="Css\stocktaking.css" />
     <Content Include="Dashboard\AddBranch.html" />
     <Content Include="Dashboard\AddUsers.html" />
     <Content Include="Dashboard\DashboardAdmin.html" />
@@ -104,6 +106,7 @@
     <Content Include="Index.html" />
     <Content Include="Owner Pages\Finance.html" />
     <Content Include="Owner Pages\Inventory Managament.html" />
+    <Content Include="Owner Pages\Stock Taking.html" />
     <Content Include="Robots.txt" />
     <Content Include="Script\add-branch.js" />
     <Content Include="Script\AddUser.js" />
@@ -111,6 +114,7 @@
     <Content Include="Script\business-setup.js" />
     <Content Include="Script\ChangeManagement.js" />
     <Content Include="Script\ChangeManagementUI.js" />
+    <Content Include="Script\employeedashboard.js" />
     <Content Include="Script\finance.js" />
     <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />
@@ -120,6 +124,8 @@
     <Content Include="Script\owanerdashboard.js" />
     <Content Include="Script\Register.js" />
     <Content Include="Script\stockfollowup.js" />
+    <Content Include="Script\stocktaking-page.js" />
+    <Content Include="Script\stocktaking.js" />
     <Content Include="Script\storage.js" />
     <Content Include="Script\Userprofile.js" />
     <Content Include="Sitemap.xml" />
