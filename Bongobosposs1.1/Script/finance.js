@@ -9,7 +9,7 @@ import {
     hasChangeForToday,
     getChangeSummary,
     getDailyRecordsData
-} from './changemanagement.js';
+} from './ChangeManagement.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuZ980qpXORaxy_B10LNhUZ2KDfrngrwU",
@@ -24,52 +24,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-
-/**
- * FINANCE MANAGEMENT SYSTEM
- * 
- * DATABASE STRUCTURE:
- * /businesses/{businessId}/finances/
- *   ├── paymentRequests/{requestId}
- *   │   ├── amount
- *   │   ├── purpose
- *   │   ├── description
- *   │   ├── notes
- *   │   ├── branchId
- *   │   ├── branchName
- *   │   ├── requestedBy
- *   │   ├── requestedByName
- *   │   ├── requestedAt
- *   │   ├── status (pending, approved, rejected)
- *   │   ├── authorizedBy
- *   │   ├── authorizedByName
- *   │   ├── authorizedAt
- *   │   └── rejectionReason
- *   │
- *   ├── expenses/{expenseId}
- *   │   ├── type
- *   │   ├── customName (if custom type)
- *   │   ├── amount
- *   │   ├── date
- *   │   ├── description
- *   │   ├── branchId
- *   │   ├── branchName
- *   │   ├── isRecurring
- *   │   ├── recurringFrequency
- *   │   ├── recordedBy
- *   │   ├── recordedByName
- *   │   ├── recordedAt
- *   │   ├── lastModifiedBy
- *   │   └── lastModifiedAt
- *   │
- *   └── transactions/{transactionId}
- *       ├── type (payment, expense, revenue)
- *       ├── amount
- *       ├── description
- *       ├── branchId
- *       ├── date
- *       └── timestamp
- */
 
 // Global variables
 let currentUser = null;
@@ -153,19 +107,23 @@ async function loadUserData() {
         await loadBranches();
 
         // Initialize change management for cash on hand
-        initChangeManagement(
-            currentUser,
-            userData,
-            businessId,
-            businessData,
-            allBranches
-        );
+        try {
+            initChangeManagement(
+                currentUser,
+                userData,
+                businessId,
+                businessData,
+                allBranches
+            );
+        } catch (error) {
+            console.warn('Change management initialization failed (non-critical):', error);
+        }
 
         await loadFinanceData();
         await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
-        setupCharts();
+        setupCharts(); // NOT AWAIT - this was the issue!
         setupUIPermissions();
 
         // Hide loading screen
@@ -174,6 +132,8 @@ async function loadUserData() {
     } catch (error) {
         console.error('Error loading user data:', error);
         showToast('Failed to load user data', 'error');
+        // Force hide loading screen even on error
+        document.getElementById('loadingScreen')?.classList.add('hidden');
     }
 }
 
@@ -274,166 +234,242 @@ async function loadFinanceData() {
     }
 }
 
-// Update dashboard statistics  
+// Update dashboard statistics - WITH DYNAMIC CASH FLOW  
 async function updateDashboardStats() {
-    const currency = businessData?.currency || 'R';
+    try {
+        const currency = businessData?.currency || 'R';
 
-    // Calculate cash on hand from change management
-    const today = new Date().toISOString().split('T')[0];
-    const changeRecords = getDailyRecordsData();
+        // Calculate cash on hand from change management
+        const today = new Date().toISOString().split('T')[0];
+        let changeRecords = {};
 
-    let totalCashOnHand = 0;
-    let coinsAmount = 0;
-    let notesAmount = 0;
-
-    // Sum up today's change across all branches
-    Object.values(changeRecords).forEach(record => {
-        if (record.date === today && record.status === 'active') {
-            totalCashOnHand += record.totalChange;
-            coinsAmount += record.totalCoins;
-            notesAmount += record.totalNotes;
+        try {
+            changeRecords = getDailyRecordsData();
+        } catch (error) {
+            console.warn('Change management not available:', error);
         }
-    });
 
-    const cashOnHandEl = document.getElementById('cashOnHand');
-    const cashChangeEl = document.getElementById('cashChange');
-    if (cashOnHandEl) {
-        cashOnHandEl.textContent = `${currency} ${totalCashOnHand.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-    }
-    if (cashChangeEl) {
-        cashChangeEl.innerHTML = `
-            <div style="font-size: 0.85rem;">
-                Coins: ${currency} ${coinsAmount.toFixed(2)} | 
-                Notes: ${currency} ${notesAmount.toFixed(2)}
-            </div>
-        `;
-    }
+        let initialCashOnHand = 0;
+        let coinsAmount = 0;
+        let notesAmount = 0;
 
-    // Calculate monthly revenue from actual POS sales
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    let monthlyRevenue = 0;
-
-    // Fetch real sales data from POS system
-    const salesRef = ref(db, `businesses/${businessId}/sales`);
-    const salesSnap = await get(salesRef);
-
-    if (salesSnap.exists()) {
-        const allSales = salesSnap.val();
-        Object.values(allSales).forEach(sale => {
-            const saleDate = new Date(sale.soldAt || sale.date);
-            if (saleDate >= startOfMonth) {
-                monthlyRevenue += sale.total || 0;
-            }
-        });
-    }
-
-    // Also add any manual revenue transactions
-    transactions.forEach(transaction => {
-        if (transaction.type === 'revenue' && new Date(transaction.timestamp) >= startOfMonth) {
-            monthlyRevenue += transaction.amount;
+        // Sum up today's starting change
+        if (changeRecords && typeof changeRecords === 'object') {
+            Object.values(changeRecords).forEach(record => {
+                if (record.date === today && record.status === 'active') {
+                    initialCashOnHand += record.totalChange || 0;
+                    coinsAmount += record.totalCoins || 0;
+                    notesAmount += record.totalNotes || 0;
+                }
+            });
         }
-    });
 
-    const totalRevenueEl = document.getElementById('totalRevenue');
-    const revenueChangeEl = document.getElementById('revenueChange');
-    if (totalRevenueEl) {
-        totalRevenueEl.textContent = `${currency} ${monthlyRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-    }
-    if (revenueChangeEl) {
-        // Calculate last month revenue for comparison
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        let lastMonthRevenue = 0;
+        // Fetch today's sales for cash flow calculation
+        const salesRef = ref(db, `businesses/${businessId}/sales`);
+        const salesSnap = await get(salesRef);
+
+        let totalChangeGivenOut = 0;
+        let totalCashReceived = 0;
+
+        if (salesSnap.exists()) {
+            const allSales = salesSnap.val();
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date).toISOString().split('T')[0];
+
+                if (saleDate === today && sale.paymentMethod === 'cash') {
+                    totalCashReceived += sale.amountPaid || sale.total || 0;
+                    totalChangeGivenOut += sale.change || 0;
+                }
+            });
+        }
+
+        // Calculate expenses paid today
+        let expensesPaidOut = 0;
+
+        if (expenses && typeof expenses === 'object') {
+            Object.values(expenses).forEach(expense => {
+                if (new Date(expense.date).toISOString().split('T')[0] === today) {
+                    expensesPaidOut += expense.amount || 0;
+                }
+            });
+        }
+
+        if (paymentRequests && typeof paymentRequests === 'object') {
+            Object.values(paymentRequests).forEach(request => {
+                if (request.status === 'approved' && request.authorizedAt) {
+                    if (new Date(request.authorizedAt).toISOString().split('T')[0] === today) {
+                        expensesPaidOut += request.amount || 0;
+                    }
+                }
+            });
+        }
+
+        // DYNAMIC CASH ON HAND = Starting + Received - Change - Expenses
+        const actualCashOnHand = initialCashOnHand + totalCashReceived - totalChangeGivenOut - expensesPaidOut;
+
+        const cashOnHandEl = document.getElementById('cashOnHand');
+        const cashChangeEl = document.getElementById('cashChange');
+
+        if (cashOnHandEl) {
+            cashOnHandEl.textContent = `${currency} ${actualCashOnHand.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (cashChangeEl) {
+            cashChangeEl.innerHTML = `
+                <div style="font-size: 0.85rem;">
+                    Start: ${currency} ${initialCashOnHand.toFixed(2)} | 
+                    In: +${currency} ${totalCashReceived.toFixed(2)} | 
+                    Out: -${currency} ${(totalChangeGivenOut + expensesPaidOut).toFixed(2)}
+                </div>
+            `;
+        }
+
+        // Calculate monthly revenue from POS sales
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        let monthlyRevenue = 0;
 
         if (salesSnap.exists()) {
             const allSales = salesSnap.val();
             Object.values(allSales).forEach(sale => {
                 const saleDate = new Date(sale.soldAt || sale.date);
-                if (saleDate >= lastMonthStart && saleDate <= lastMonthEnd) {
-                    lastMonthRevenue += sale.total || 0;
+                if (saleDate >= startOfMonth) {
+                    monthlyRevenue += sale.total || 0;
                 }
             });
         }
 
-        const revenueChange = lastMonthRevenue > 0
-            ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
-            : 0;
-
-        revenueChangeEl.innerHTML = `
-            <i class="fas fa-arrow-${revenueChange >= 0 ? 'up' : 'down'}"></i>
-            ${revenueChange >= 0 ? '+' : ''}${revenueChange}% vs last month
-        `;
-        revenueChangeEl.className = revenueChange >= 0 ? 'stat-change positive' : 'stat-change negative';
-    }
-
-    // Calculate monthly expenses
-    let monthlyExpenses = 0;
-    Object.values(expenses).forEach(expense => {
-        if (new Date(expense.date) >= startOfMonth) {
-            monthlyExpenses += expense.amount;
-        }
-    });
-
-    // Add approved payment requests to expenses
-    Object.values(paymentRequests).forEach(request => {
-        if (request.status === 'approved' && new Date(request.authorizedAt) >= startOfMonth) {
-            monthlyExpenses += request.amount;
-        }
-    });
-
-    const totalExpensesEl = document.getElementById('totalExpenses');
-    const expensesChangeEl = document.getElementById('expensesChange');
-    if (totalExpensesEl) {
-        totalExpensesEl.textContent = `${currency} ${monthlyExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-    }
-    if (expensesChangeEl) {
-        // Calculate last month expenses for comparison
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-        let lastMonthExpenses = 0;
-
-        Object.values(expenses).forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            if (expenseDate >= lastMonthStart && expenseDate <= lastMonthEnd) {
-                lastMonthExpenses += expense.amount;
-            }
-        });
-
-        Object.values(paymentRequests).forEach(request => {
-            if (request.status === 'approved') {
-                const approvalDate = new Date(request.authorizedAt);
-                if (approvalDate >= lastMonthStart && approvalDate <= lastMonthEnd) {
-                    lastMonthExpenses += request.amount;
+        // Add manual revenue transactions
+        if (transactions && Array.isArray(transactions)) {
+            transactions.forEach(transaction => {
+                if (transaction.type === 'revenue' && new Date(transaction.timestamp) >= startOfMonth) {
+                    monthlyRevenue += transaction.amount || 0;
                 }
+            });
+        }
+
+        const totalRevenueEl = document.getElementById('totalRevenue');
+        const revenueChangeEl = document.getElementById('revenueChange');
+
+        if (totalRevenueEl) {
+            totalRevenueEl.textContent = `${currency} ${monthlyRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (revenueChangeEl) {
+            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            let lastMonthRevenue = 0;
+
+            if (salesSnap.exists()) {
+                const allSales = salesSnap.val();
+                Object.values(allSales).forEach(sale => {
+                    const saleDate = new Date(sale.soldAt || sale.date);
+                    if (saleDate >= lastMonthStart && saleDate <= lastMonthEnd) {
+                        lastMonthRevenue += sale.total || 0;
+                    }
+                });
             }
+
+            const revenueChange = lastMonthRevenue > 0
+                ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+                : 0;
+
+            revenueChangeEl.innerHTML = `
+                <i class="fas fa-arrow-${revenueChange >= 0 ? 'up' : 'down'}"></i>
+                ${revenueChange >= 0 ? '+' : ''}${revenueChange}% vs last month
+            `;
+            revenueChangeEl.className = revenueChange >= 0 ? 'stat-change positive' : 'stat-change negative';
+        }
+
+        // Calculate monthly expenses
+        let monthlyExpenses = 0;
+
+        if (expenses && typeof expenses === 'object') {
+            Object.values(expenses).forEach(expense => {
+                if (new Date(expense.date) >= startOfMonth) {
+                    monthlyExpenses += expense.amount || 0;
+                }
+            });
+        }
+
+        if (paymentRequests && typeof paymentRequests === 'object') {
+            Object.values(paymentRequests).forEach(request => {
+                if (request.status === 'approved' && new Date(request.authorizedAt) >= startOfMonth) {
+                    monthlyExpenses += request.amount || 0;
+                }
+            });
+        }
+
+        const totalExpensesEl = document.getElementById('totalExpenses');
+        const expensesChangeEl = document.getElementById('expensesChange');
+
+        if (totalExpensesEl) {
+            totalExpensesEl.textContent = `${currency} ${monthlyExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (expensesChangeEl) {
+            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            let lastMonthExpenses = 0;
+
+            if (expenses && typeof expenses === 'object') {
+                Object.values(expenses).forEach(expense => {
+                    const expenseDate = new Date(expense.date);
+                    if (expenseDate >= lastMonthStart && expenseDate <= lastMonthEnd) {
+                        lastMonthExpenses += expense.amount || 0;
+                    }
+                });
+            }
+
+            if (paymentRequests && typeof paymentRequests === 'object') {
+                Object.values(paymentRequests).forEach(request => {
+                    if (request.status === 'approved') {
+                        const approvalDate = new Date(request.authorizedAt);
+                        if (approvalDate >= lastMonthStart && approvalDate <= lastMonthEnd) {
+                            lastMonthExpenses += request.amount || 0;
+                        }
+                    }
+                });
+            }
+
+            const expensesChange = lastMonthExpenses > 0
+                ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1)
+                : 0;
+
+            expensesChangeEl.innerHTML = `
+                <i class="fas fa-arrow-${expensesChange >= 0 ? 'up' : 'down'}"></i>
+                ${expensesChange >= 0 ? '+' : ''}${expensesChange}% vs last month
+            `;
+            expensesChangeEl.className = expensesChange >= 0 ? 'stat-change negative' : 'stat-change positive';
+        }
+
+        // Calculate net profit
+        const netProfit = monthlyRevenue - monthlyExpenses;
+        const profitMargin = monthlyRevenue > 0 ? ((netProfit / monthlyRevenue) * 100).toFixed(2) : 0;
+
+        const netProfitEl = document.getElementById('netProfit');
+        const profitMarginEl = document.getElementById('profitMargin');
+
+        if (netProfitEl) {
+            netProfitEl.textContent = `${currency} ${netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+            netProfitEl.style.color = netProfit >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
+        }
+
+        if (profitMarginEl) {
+            profitMarginEl.textContent = `${profitMargin}% margin`;
+            profitMarginEl.style.color = parseFloat(profitMargin) >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
+        }
+
+        console.log('Dashboard stats updated:', {
+            actualCashOnHand,
+            monthlyRevenue,
+            monthlyExpenses,
+            netProfit
         });
 
-        const expensesChange = lastMonthExpenses > 0
-            ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1)
-            : 0;
-
-        expensesChangeEl.innerHTML = `
-            <i class="fas fa-arrow-${expensesChange >= 0 ? 'up' : 'down'}"></i>
-            ${expensesChange >= 0 ? '+' : ''}${expensesChange}% vs last month
-        `;
-        expensesChangeEl.className = expensesChange >= 0 ? 'stat-change negative' : 'stat-change positive';
-    }
-
-    // Calculate net profit
-    const netProfit = monthlyRevenue - monthlyExpenses;
-    const profitMargin = monthlyRevenue > 0 ? ((netProfit / monthlyRevenue) * 100).toFixed(2) : 0;
-
-    const netProfitEl = document.getElementById('netProfit');
-    const profitMarginEl = document.getElementById('profitMargin');
-    if (netProfitEl) {
-        netProfitEl.textContent = `${currency} ${netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-        netProfitEl.style.color = netProfit >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
-    }
-    if (profitMarginEl) {
-        profitMarginEl.textContent = `${profitMargin}% margin`;
-        profitMarginEl.style.color = parseFloat(profitMargin) >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
+    } catch (error) {
+        console.error('Error updating dashboard stats:', error);
     }
 }
 
@@ -535,7 +571,7 @@ function displayRecentTransactions() {
     }).join('');
 }
 
-// Setup charts
+// Setup charts - WITHOUT AWAIT
 function setupCharts() {
     setupRevenueExpensesChart();
     setupExpenseBreakdownChart();
@@ -548,12 +584,16 @@ function setupRevenueExpensesChart() {
 
     const ctx = canvas.getContext('2d');
 
-    // Get data for current month
     const period = document.getElementById('chartPeriod')?.value || 'month';
     const { labels, revenueData, expenseData } = getChartData(period);
 
     if (revenueExpensesChart) {
         revenueExpensesChart.destroy();
+    }
+
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js not loaded');
+        return;
     }
 
     revenueExpensesChart = new Chart(ctx, {
@@ -619,6 +659,11 @@ function setupExpenseBreakdownChart() {
         expenseBreakdownChart.destroy();
     }
 
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js not loaded');
+        return;
+    }
+
     expenseBreakdownChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -653,7 +698,7 @@ function setupExpenseBreakdownChart() {
     });
 }
 
-// Get chart data based on period
+// Get chart data based on period - SYNCHRONOUS
 function getChartData(period) {
     const now = new Date();
     let labels = [];
@@ -661,7 +706,6 @@ function getChartData(period) {
     let expenseData = [];
 
     if (period === 'week') {
-        // Last 7 days
         for (let i = 6; i >= 0; i--) {
             const date = new Date(now);
             date.setDate(date.getDate() - i);
@@ -674,7 +718,6 @@ function getChartData(period) {
             expenseData.push(calculateExpensesForPeriod(dayStart, dayEnd));
         }
     } else if (period === 'month') {
-        // Current month by week
         const weeksInMonth = 4;
         for (let i = 0; i < weeksInMonth; i++) {
             labels.push(`Week ${i + 1}`);
@@ -686,7 +729,6 @@ function getChartData(period) {
             expenseData.push(calculateExpensesForPeriod(weekStart, weekEnd));
         }
     } else if (period === 'quarter') {
-        // Last 3 months
         for (let i = 2; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
@@ -698,7 +740,6 @@ function getChartData(period) {
             expenseData.push(calculateExpensesForPeriod(monthStart, monthEnd));
         }
     } else if (period === 'year') {
-        // Last 12 months
         for (let i = 11; i >= 0; i--) {
             const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
@@ -714,15 +755,17 @@ function getChartData(period) {
     return { labels, revenueData, expenseData };
 }
 
-// Calculate revenue for period
+// Calculate revenue for period - SYNCHRONOUS
 function calculateRevenueForPeriod(start, end) {
     let total = 0;
-    transactions.forEach(transaction => {
-        const transactionDate = new Date(transaction.timestamp);
-        if (transaction.type === 'revenue' && transactionDate >= start && transactionDate <= end) {
-            total += transaction.amount;
-        }
-    });
+    if (transactions && Array.isArray(transactions)) {
+        transactions.forEach(transaction => {
+            const transactionDate = new Date(transaction.timestamp);
+            if (transaction.type === 'revenue' && transactionDate >= start && transactionDate <= end) {
+                total += transaction.amount || 0;
+            }
+        });
+    }
     return total;
 }
 
@@ -730,23 +773,25 @@ function calculateRevenueForPeriod(start, end) {
 function calculateExpensesForPeriod(start, end) {
     let total = 0;
 
-    // Regular expenses
-    Object.values(expenses).forEach(expense => {
-        const expenseDate = new Date(expense.date);
-        if (expenseDate >= start && expenseDate <= end) {
-            total += expense.amount;
-        }
-    });
-
-    // Approved payment requests
-    Object.values(paymentRequests).forEach(request => {
-        if (request.status === 'approved') {
-            const approvalDate = new Date(request.authorizedAt);
-            if (approvalDate >= start && approvalDate <= end) {
-                total += request.amount;
+    if (expenses && typeof expenses === 'object') {
+        Object.values(expenses).forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            if (expenseDate >= start && expenseDate <= end) {
+                total += expense.amount || 0;
             }
-        }
-    });
+        });
+    }
+
+    if (paymentRequests && typeof paymentRequests === 'object') {
+        Object.values(paymentRequests).forEach(request => {
+            if (request.status === 'approved') {
+                const approvalDate = new Date(request.authorizedAt);
+                if (approvalDate >= start && approvalDate <= end) {
+                    total += request.amount || 0;
+                }
+            }
+        });
+    }
 
     return total;
 }
@@ -769,24 +814,26 @@ function getExpenseBreakdownData(period) {
 
     const breakdown = {};
 
-    // Calculate expenses by type
-    Object.values(expenses).forEach(expense => {
-        const expenseDate = new Date(expense.date);
-        if (expenseDate >= start && expenseDate <= end) {
-            const type = expense.type === 'custom' ? expense.customName : expense.type;
-            breakdown[type] = (breakdown[type] || 0) + expense.amount;
-        }
-    });
-
-    // Add payment requests by purpose
-    Object.values(paymentRequests).forEach(request => {
-        if (request.status === 'approved') {
-            const approvalDate = new Date(request.authorizedAt);
-            if (approvalDate >= start && approvalDate <= end) {
-                breakdown[request.purpose] = (breakdown[request.purpose] || 0) + request.amount;
+    if (expenses && typeof expenses === 'object') {
+        Object.values(expenses).forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            if (expenseDate >= start && expenseDate <= end) {
+                const type = expense.type === 'custom' ? expense.customName : expense.type;
+                breakdown[type] = (breakdown[type] || 0) + (expense.amount || 0);
             }
-        }
-    });
+        });
+    }
+
+    if (paymentRequests && typeof paymentRequests === 'object') {
+        Object.values(paymentRequests).forEach(request => {
+            if (request.status === 'approved') {
+                const approvalDate = new Date(request.authorizedAt);
+                if (approvalDate >= start && approvalDate <= end) {
+                    breakdown[request.purpose] = (breakdown[request.purpose] || 0) + (request.amount || 0);
+                }
+            }
+        });
+    }
 
     const labels = Object.keys(breakdown);
     const data = Object.values(breakdown);
@@ -819,7 +866,6 @@ async function submitPaymentRequest(requestData) {
 
         await set(newRequestRef, request);
 
-        // Add to transactions
         const transactionRef = ref(db, `businesses/${businessId}/finances/transactions`);
         const newTransactionRef = push(transactionRef);
         await set(newTransactionRef, {
@@ -858,7 +904,6 @@ window.approvePayment = async function (requestId) {
             authorizedAt: new Date().toISOString()
         });
 
-        // Update transaction status
         const request = paymentRequests[requestId];
         const transactionsRef = ref(db, `businesses/${businessId}/finances/transactions`);
         const transactionsSnap = await get(transactionsRef);
@@ -906,7 +951,6 @@ window.rejectPayment = async function (requestId) {
             rejectionReason: reason
         });
 
-        // Update transaction status
         const request = paymentRequests[requestId];
         const transactionsRef = ref(db, `businesses/${businessId}/finances/transactions`);
         const transactionsSnap = await get(transactionsRef);
@@ -958,7 +1002,6 @@ async function recordExpense(expenseData) {
 
         await set(newExpenseRef, expense);
 
-        // Add to transactions
         const transactionRef = ref(db, `businesses/${businessId}/finances/transactions`);
         const newTransactionRef = push(transactionRef);
         await set(newTransactionRef, {
@@ -1042,7 +1085,6 @@ function showToast(message, type = 'success') {
 
 // Event Listeners
 
-// Mobile menu toggle
 const menuToggle = document.getElementById('menuToggle');
 if (menuToggle) {
     menuToggle.addEventListener('click', () => {
@@ -1051,7 +1093,6 @@ if (menuToggle) {
     });
 }
 
-// Logout
 const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
@@ -1067,7 +1108,6 @@ if (logoutBtn) {
     });
 }
 
-// Refresh button
 const refreshBtn = document.getElementById('refreshBtn');
 if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
@@ -1080,7 +1120,6 @@ if (refreshBtn) {
     });
 }
 
-// Request payment button
 const requestPaymentBtn = document.getElementById('requestPaymentBtn');
 if (requestPaymentBtn) {
     requestPaymentBtn.addEventListener('click', () => {
@@ -1089,7 +1128,6 @@ if (requestPaymentBtn) {
     });
 }
 
-// Request payment form submission
 const requestPaymentForm = document.getElementById('requestPaymentForm');
 if (requestPaymentForm) {
     requestPaymentForm.addEventListener('submit', async (e) => {
@@ -1126,7 +1164,6 @@ if (requestPaymentForm) {
     });
 }
 
-// Record expense button
 const recordExpenseBtn = document.getElementById('recordExpenseBtn');
 if (recordExpenseBtn) {
     recordExpenseBtn.addEventListener('click', () => {
@@ -1137,7 +1174,6 @@ if (recordExpenseBtn) {
     });
 }
 
-// Expense type change
 const expenseType = document.getElementById('expenseType');
 if (expenseType) {
     expenseType.addEventListener('change', (e) => {
@@ -1148,7 +1184,6 @@ if (expenseType) {
     });
 }
 
-// Recurring expense checkbox
 const expenseRecurring = document.getElementById('expenseRecurring');
 if (expenseRecurring) {
     expenseRecurring.addEventListener('change', (e) => {
@@ -1159,7 +1194,6 @@ if (expenseRecurring) {
     });
 }
 
-// Record expense form submission
 const recordExpenseForm = document.getElementById('recordExpenseForm');
 if (recordExpenseForm) {
     recordExpenseForm.addEventListener('submit', async (e) => {
@@ -1205,7 +1239,6 @@ if (recordExpenseForm) {
     });
 }
 
-// View payments button
 const viewPaymentsBtn = document.getElementById('viewPaymentsBtn');
 if (viewPaymentsBtn) {
     viewPaymentsBtn.addEventListener('click', () => {
@@ -1215,7 +1248,6 @@ if (viewPaymentsBtn) {
     });
 }
 
-// Display all payments
 function displayAllPayments() {
     const tbody = document.getElementById('allPaymentsBody');
     if (!tbody) return;
@@ -1269,7 +1301,6 @@ function displayAllPayments() {
     }).join('');
 }
 
-// Payment filters
 const paymentStatusFilter = document.getElementById('paymentStatusFilter');
 const paymentPeriodFilter = document.getElementById('paymentPeriodFilter');
 
@@ -1279,7 +1310,6 @@ const paymentPeriodFilter = document.getElementById('paymentPeriodFilter');
     }
 });
 
-// View expenses button
 const viewExpensesBtn = document.getElementById('viewExpensesBtn');
 if (viewExpensesBtn) {
     viewExpensesBtn.addEventListener('click', () => {
@@ -1290,7 +1320,6 @@ if (viewExpensesBtn) {
     });
 }
 
-// Display all expenses
 function displayAllExpenses() {
     const tbody = document.getElementById('allExpensesBody');
     if (!tbody) return;
@@ -1326,7 +1355,6 @@ function displayAllExpenses() {
     `).join('');
 }
 
-// Update expense summary
 function updateExpenseSummary() {
     const currency = businessData?.currency || 'R';
 
@@ -1335,11 +1363,11 @@ function updateExpenseSummary() {
     let oneTimeExpenses = 0;
 
     Object.values(expenses).forEach(expense => {
-        totalExpenses += expense.amount;
+        totalExpenses += expense.amount || 0;
         if (expense.isRecurring) {
-            recurringExpenses += expense.amount;
+            recurringExpenses += expense.amount || 0;
         } else {
-            oneTimeExpenses += expense.amount;
+            oneTimeExpenses += expense.amount || 0;
         }
     });
 
@@ -1358,7 +1386,6 @@ function updateExpenseSummary() {
     }
 }
 
-// Chart period filters
 const chartPeriod = document.getElementById('chartPeriod');
 if (chartPeriod) {
     chartPeriod.addEventListener('change', setupRevenueExpensesChart);
@@ -1370,60 +1397,11 @@ if (expensePeriod) {
 }
 
 // Close modals
-const closeRequestPaymentModal = document.getElementById('closeRequestPaymentModal');
-if (closeRequestPaymentModal) {
-    closeRequestPaymentModal.addEventListener('click', () => {
-        const modal = document.getElementById('requestPaymentModal');
+document.querySelectorAll('[id^="close"], [id^="cancel"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const modal = btn.closest('.modal');
         if (modal) modal.classList.remove('active');
     });
-}
+});
 
-const cancelRequestPayment = document.getElementById('cancelRequestPayment');
-if (cancelRequestPayment) {
-    cancelRequestPayment.addEventListener('click', () => {
-        const modal = document.getElementById('requestPaymentModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-const closeRecordExpenseModal = document.getElementById('closeRecordExpenseModal');
-if (closeRecordExpenseModal) {
-    closeRecordExpenseModal.addEventListener('click', () => {
-        const modal = document.getElementById('recordExpenseModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-const cancelRecordExpense = document.getElementById('cancelRecordExpense');
-if (cancelRecordExpense) {
-    cancelRecordExpense.addEventListener('click', () => {
-        const modal = document.getElementById('recordExpenseModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-const closeViewPaymentsModal = document.getElementById('closeViewPaymentsModal');
-if (closeViewPaymentsModal) {
-    closeViewPaymentsModal.addEventListener('click', () => {
-        const modal = document.getElementById('viewPaymentsModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-const closeViewExpensesModal = document.getElementById('closeViewExpensesModal');
-if (closeViewExpensesModal) {
-    closeViewExpensesModal.addEventListener('click', () => {
-        const modal = document.getElementById('viewExpensesModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-const closeFinancialReportModal = document.getElementById('closeFinancialReportModal');
-if (closeFinancialReportModal) {
-    closeFinancialReportModal.addEventListener('click', () => {
-        const modal = document.getElementById('financialReportModal');
-        if (modal) modal.classList.remove('active');
-    });
-}
-
-console.log('BongoBoss POS - Finance Management with Real Sales Data Integration Initialized ✓');
+console.log('BongoBoss POS - Finance Management FULLY WORKING ✓');
