@@ -357,6 +357,7 @@ window.addToCart = function (productId) {
             productName: product.productName,
             sku: product.sku,
             sellPrice: product.sellPrice,
+            taxRate: product.taxRate !== undefined ? product.taxRate : 15, // Store tax rate with item
             unit: product.unit,
             quantity: 1,
             maxStock: product.currentStock
@@ -483,7 +484,14 @@ function updateCartModal() {
 // Update modal totals
 function updateModalTotals() {
     const subtotal = shoppingCart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
-    const tax = subtotal * 0.15;
+
+    // Calculate tax based on individual product tax rates
+    const tax = shoppingCart.reduce((sum, item) => {
+        const itemSubtotal = item.sellPrice * item.quantity;
+        const itemTax = itemSubtotal * ((item.taxRate || 0) / 100);
+        return sum + itemTax;
+    }, 0);
+
     const total = subtotal + tax;
     const currency = businessData?.currency || 'R';
 
@@ -525,7 +533,14 @@ window.removeFromCart = function (index) {
 // Update cart totals
 function updateCartTotals() {
     const subtotal = shoppingCart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
-    const tax = subtotal * 0.15; // 15% VAT
+
+    // Calculate tax based on individual product tax rates
+    const tax = shoppingCart.reduce((sum, item) => {
+        const itemSubtotal = item.sellPrice * item.quantity;
+        const itemTax = itemSubtotal * ((item.taxRate || 0) / 100);
+        return sum + itemTax;
+    }, 0);
+
     const total = subtotal + tax;
 
     const currency = businessData?.currency || 'R';
@@ -592,7 +607,14 @@ if (checkoutModalBtn) {
         if (shoppingCart.length === 0) return;
 
         const subtotal = shoppingCart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
-        const tax = subtotal * 0.15;
+
+        // Calculate tax based on individual product tax rates
+        const tax = shoppingCart.reduce((sum, item) => {
+            const itemSubtotal = item.sellPrice * item.quantity;
+            const itemTax = itemSubtotal * ((item.taxRate || 0) / 100);
+            return sum + itemTax;
+        }, 0);
+
         const total = subtotal + tax;
 
         const currency = businessData?.currency || 'R';
@@ -616,7 +638,14 @@ if (checkoutBtn) {
         if (shoppingCart.length === 0) return;
 
         const subtotal = shoppingCart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
-        const tax = subtotal * 0.15;
+
+        // Calculate tax based on individual product tax rates
+        const tax = shoppingCart.reduce((sum, item) => {
+            const itemSubtotal = item.sellPrice * item.quantity;
+            const itemTax = itemSubtotal * ((item.taxRate || 0) / 100);
+            return sum + itemTax;
+        }, 0);
+
         const total = subtotal + tax;
 
         const currency = businessData?.currency || 'R';
@@ -680,7 +709,14 @@ if (completeSaleBtn) {
 
         try {
             const subtotal = shoppingCart.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
-            const tax = subtotal * 0.15;
+
+            // Calculate tax based on individual product tax rates
+            const tax = shoppingCart.reduce((sum, item) => {
+                const itemSubtotal = item.sellPrice * item.quantity;
+                const itemTax = itemSubtotal * ((item.taxRate || 0) / 100);
+                return sum + itemTax;
+            }, 0);
+
             const total = subtotal + tax;
             const paid = parseFloat(document.getElementById('amountPaid').value);
             const change = paid - total;
@@ -697,8 +733,10 @@ if (completeSaleBtn) {
                     productName: item.productName,
                     sku: item.sku,
                     sellPrice: item.sellPrice,
+                    taxRate: item.taxRate,
                     quantity: item.quantity,
-                    subtotal: item.sellPrice * item.quantity
+                    subtotal: item.sellPrice * item.quantity,
+                    tax: (item.sellPrice * item.quantity) * ((item.taxRate || 0) / 100)
                 })),
                 subtotal: subtotal,
                 tax: tax,
@@ -1240,4 +1278,4 @@ function showToast(message, type = 'success') {
     }
 }
 
-console.log('BongoBoss POS - Employee Dashboard with EAN-13 Validation Initialized ✓');
+console.log('BongoBoss POS - Employee Dashboard with Product-Specific Tax Rates Initialized ✓');

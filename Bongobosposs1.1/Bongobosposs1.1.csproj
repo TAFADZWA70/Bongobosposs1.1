@@ -119,6 +119,7 @@
     <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />
     <Content Include="Script\inventory.js" />
+    <Content Include="Script\InventoryReports.js" />
     <Content Include="Script\inventorystockfollowup.js" />
     <Content Include="Script\Login.js" />
     <Content Include="Script\owanerdashboard.js" />

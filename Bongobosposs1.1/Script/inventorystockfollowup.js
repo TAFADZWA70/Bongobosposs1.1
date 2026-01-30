@@ -15,6 +15,8 @@ import {
     getStockLossesData,
     getWeeklyReportsData
 } from './stockfollowup.js';
+// Import reports module
+import { initInventoryReports } from '../Script/InventoryReports.js'
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuZ980qpXORaxy_B10LNhUZ2KDfrngrwU",
@@ -254,8 +256,19 @@ async function loadUserData() {
         await loadInventory();
         await loadHistory();
 
-        // NEW: Initialize stock follow-up module
+        // Initialize stock follow-up module (ONLY ONCE)
         initStockFollowUp(
+            currentUser,
+            userData,
+            businessId,
+            businessData,
+            allProducts,
+            allBranches,
+            allCategories
+        );
+
+        // Initialize reports module
+        initInventoryReports(
             currentUser,
             userData,
             businessId,
@@ -276,7 +289,6 @@ async function loadUserData() {
         showToast('Failed to load user data', 'error');
     }
 }
-
 // Setup UI based on user permissions
 function setupUIPermissions() {
     const addBtn = document.getElementById('addProductBtn');
@@ -844,7 +856,7 @@ window.editProduct = function (productId) {
     setFieldValue('productCategory', product.category);
     setFieldValue('costPrice', product.costPrice);
     setFieldValue('sellPrice', product.sellPrice);
-    setFieldValue('taxRate', product.taxRate || 15);
+    setFieldValue('taxRate', product.taxRate !== undefined ? product.taxRate : 15);
     setFieldValue('productBranch', product.branchId);
     setFieldValue('currentStock', product.currentStock);
     setFieldValue('minStock', product.minStock);
@@ -2083,7 +2095,20 @@ if (productForm) {
         const category = document.getElementById('productCategory').value;
         const costPrice = parseFloat(document.getElementById('costPrice').value);
         const sellPrice = parseFloat(document.getElementById('sellPrice').value);
-        const taxRate = parseFloat(document.getElementById('taxRate').value) || 15;
+
+        // FIXED: Proper tax rate handling to allow 0% and custom values
+        const taxRateInput = document.getElementById('taxRate');
+        let taxRate = 15; // Default value
+
+        if (taxRateInput && taxRateInput.value.trim() !== '') {
+            taxRate = parseFloat(taxRateInput.value);
+            // Validate tax rate is a number and non-negative
+            if (isNaN(taxRate) || taxRate < 0) {
+                showToast('Please enter a valid tax rate (0 or higher)', 'error');
+                return;
+            }
+        }
+
         const branchId = document.getElementById('productBranch').value;
         const currentStock = parseInt(document.getElementById('currentStock').value);
         const minStock = parseInt(document.getElementById('minStock').value) || 10;
@@ -2164,7 +2189,7 @@ if (productForm) {
                 costPrice,
                 sellPrice,
                 profitMargin: parseFloat(profitMargin),
-                taxRate,
+                taxRate, // Now properly handles 0% and custom values
                 currentStock,
                 minStock,
                 maxStock,

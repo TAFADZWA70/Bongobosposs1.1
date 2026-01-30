@@ -12,6 +12,163 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Quagga JS for barcode scanning -->
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
+
+    <style>
+        /* Additional styles for new reports features */
+        .report-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--gray-200);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: none;
+            color: var(--gray-600);
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+            .tab-btn:hover {
+                color: var(--primary-color);
+                background: var(--gray-50);
+            }
+
+            .tab-btn.active {
+                color: var(--primary-color);
+                border-bottom-color: var(--primary-color);
+                background: var(--gray-50);
+            }
+
+        .report-content {
+            display: none;
+        }
+
+            .report-content.active {
+                display: block;
+            }
+
+        .chart-container {
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .velocity-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .velocity-fast {
+            background: var(--success-light);
+            color: var(--success-color);
+        }
+
+        .velocity-medium {
+            background: var(--warning-light);
+            color: var(--warning-color);
+        }
+
+        .velocity-slow {
+            background: var(--danger-light);
+            color: var(--danger-color);
+        }
+
+        .velocity-none {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .movement-type-sale {
+            color: var(--success-color);
+        }
+
+        .movement-type-loss {
+            color: var(--danger-color);
+        }
+
+        .movement-type-adjustment {
+            color: var(--warning-color);
+        }
+
+        .movement-type-restock {
+            color: var(--primary-color);
+        }
+
+        .time-chart-bar {
+            background: var(--primary-color);
+            height: 100%;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+            .time-chart-bar:hover {
+                background: var(--secondary-color);
+            }
+
+        .filters-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+            .filters-row select,
+            .filters-row input {
+                padding: 0.5rem;
+                border: 1px solid var(--gray-300);
+                border-radius: 6px;
+                flex: 1;
+                min-width: 150px;
+            }
+
+        .export-btn {
+            padding: 0.5rem 1rem;
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+            .export-btn:hover {
+                background: var(--primary-color);
+            }
+    </style>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -229,6 +386,10 @@
                 <button class="action-btn" id="weeklyReportBtn">
                     <i class="fas fa-file-alt"></i>
                     <span>Weekly Report</span>
+                </button>
+                <button class="action-btn" id="inventoryReportsBtn">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics & Reports</span>
                 </button>
                 <button class="action-btn" id="bulkUploadBtn">
                     <i class="fas fa-upload"></i>
@@ -887,6 +1048,319 @@
         </div>
     </div>
 
+    <!-- ============================================================= -->
+    <!-- NEW: INVENTORY ANALYTICS & REPORTS MODAL -->
+    <!-- ============================================================= -->
+    <div class="modal" id="inventoryReportsModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-chart-line"></i> Inventory Analytics & Reports</h2>
+                <button class="close-btn" id="closeInventoryReportsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Report Type Tabs -->
+                <div class="report-tabs">
+                    <button class="tab-btn active" data-report="movement">
+                        <i class="fas fa-exchange-alt"></i> Stock Movement
+                    </button>
+                    <button class="tab-btn" data-report="timeAnalysis">
+                        <i class="fas fa-clock"></i> Sales Timing
+                    </button>
+                    <button class="tab-btn" data-report="velocity">
+                        <i class="fas fa-tachometer-alt"></i> Product Velocity
+                    </button>
+                    <button class="tab-btn" data-report="turnover">
+                        <i class="fas fa-sync-alt"></i> Stock Turnover
+                    </button>
+                </div>
+
+                <!-- STOCK MOVEMENT REPORT -->
+                <div id="movementReport" class="report-content active">
+                    <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-exchange-alt"></i> Stock Movement Timeline</h3>
+
+                    <!-- Filters -->
+                    <div class="filters-row">
+                        <input type="date" id="movementStartDate" placeholder="Start Date">
+                        <input type="date" id="movementEndDate" placeholder="End Date">
+                        <select id="movementTypeFilter">
+                            <option value="all">All Movements</option>
+                            <option value="sales">Sales Only</option>
+                            <option value="adjustments">Adjustments Only</option>
+                            <option value="losses">Losses Only</option>
+                        </select>
+                        <select id="movementBranchFilter">
+                            <option value="">All Branches</option>
+                        </select>
+                        <select id="movementProductFilter">
+                            <option value="">All Products</option>
+                        </select>
+                        <button class="export-btn" id="generateMovementReport">
+                            <i class="fas fa-chart-bar"></i> Generate Report
+                        </button>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div id="movementSummaryCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="metric-card">
+                            <div class="metric-label">Total Movements</div>
+                            <div class="metric-value" id="movementTotalCount">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Sales Transactions</div>
+                            <div class="metric-value" style="color: var(--success-color);" id="movementSalesCount">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Stock Losses</div>
+                            <div class="metric-value" style="color: var(--danger-color);" id="movementLossesCount">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Net Change</div>
+                            <div class="metric-value" id="movementNetChange">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Movement Table -->
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Type</th>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Branch</th>
+                                    <th>Performed By</th>
+                                    <th>Reference</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="movementTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                        Click "Generate Report" to view stock movements
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <button class="export-btn" id="exportMovementCSV">
+                            <i class="fas fa-file-csv"></i> Export to CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SALES TIME ANALYSIS REPORT -->
+                <div id="timeAnalysisReport" class="report-content">
+                    <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-clock"></i> Sales Time Analysis</h3>
+
+                    <!-- Filters -->
+                    <div class="filters-row">
+                        <input type="date" id="timeAnalysisStartDate" placeholder="Start Date">
+                        <input type="date" id="timeAnalysisEndDate" placeholder="End Date">
+                        <select id="timeAnalysisBranchFilter">
+                            <option value="">All Branches</option>
+                        </select>
+                        <select id="timeAnalysisProductFilter">
+                            <option value="">All Products</option>
+                        </select>
+                        <button class="export-btn" id="generateTimeAnalysis">
+                            <i class="fas fa-chart-bar"></i> Generate Analysis
+                        </button>
+                    </div>
+
+                    <!-- Summary -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="metric-card">
+                            <div class="metric-label">Total Sales</div>
+                            <div class="metric-value" id="timeAnalysisTotalSales">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Revenue</div>
+                            <div class="metric-value" id="timeAnalysisTotalRevenue">R 0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Transactions</div>
+                            <div class="metric-value" id="timeAnalysisTotalTransactions">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Transaction</div>
+                            <div class="metric-value" id="timeAnalysisAvgTransaction">R 0</div>
+                        </div>
+                    </div>
+
+                    <!-- Peak Hours -->
+                    <div class="chart-container">
+                        <h4 style="margin-bottom: 1rem;"><i class="fas fa-star"></i> Peak Sales Hours</h4>
+                        <div id="peakHoursChart" style="min-height: 200px;">
+                            <p style="text-align: center; color: var(--gray-600); padding: 3rem;">
+                                Generate analysis to view peak hours
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Hourly Breakdown -->
+                    <div class="chart-container">
+                        <h4 style="margin-bottom: 1rem;"><i class="fas fa-chart-bar"></i> Hourly Sales Distribution</h4>
+                        <div id="hourlySalesChart" style="min-height: 300px;">
+                            <p style="text-align: center; color: var(--gray-600); padding: 3rem;">
+                                Generate analysis to view hourly distribution
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Daily Breakdown -->
+                    <div class="chart-container">
+                        <h4 style="margin-bottom: 1rem;"><i class="fas fa-calendar-week"></i> Daily Sales Pattern</h4>
+                        <div id="dailySalesChart" style="min-height: 250px;">
+                            <p style="text-align: center; color: var(--gray-600); padding: 3rem;">
+                                Generate analysis to view daily patterns
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRODUCT VELOCITY REPORT -->
+                <div id="velocityReport" class="report-content">
+                    <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-tachometer-alt"></i> Product Velocity Analysis</h3>
+
+                    <!-- Filters -->
+                    <div class="filters-row">
+                        <input type="date" id="velocityStartDate" placeholder="Start Date">
+                        <input type="date" id="velocityEndDate" placeholder="End Date">
+                        <select id="velocityBranchFilter">
+                            <option value="">All Branches</option>
+                        </select>
+                        <select id="velocityCategoryFilter">
+                            <option value="">All Categories</option>
+                        </select>
+                        <button class="export-btn" id="generateVelocityReport">
+                            <i class="fas fa-chart-bar"></i> Generate Report
+                        </button>
+                    </div>
+
+                    <!-- Summary -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="metric-card">
+                            <div class="metric-label">Total Products</div>
+                            <div class="metric-value" id="velocityTotalProducts">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Fast Moving</div>
+                            <div class="metric-value" style="color: var(--success-color);" id="velocityFastMoving">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Medium Moving</div>
+                            <div class="metric-value" style="color: var(--warning-color);" id="velocityMediumMoving">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Slow Moving</div>
+                            <div class="metric-value" style="color: var(--danger-color);" id="velocitySlowMoving">0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">No Sales</div>
+                            <div class="metric-value" style="color: var(--gray-600);" id="velocityNoSales">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Velocity Table -->
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Current Stock</th>
+                                    <th>Total Sold</th>
+                                    <th>Avg Daily Sales</th>
+                                    <th>Days of Stock</th>
+                                    <th>Turnover Rate</th>
+                                    <th>Velocity</th>
+                                    <th>Reorder?</th>
+                                </tr>
+                            </thead>
+                            <tbody id="velocityTableBody">
+                                <tr>
+                                    <td colspan="9" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                        Click "Generate Report" to view product velocity
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <button class="export-btn" id="exportVelocityCSV">
+                            <i class="fas fa-file-csv"></i> Export to CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STOCK TURNOVER REPORT -->
+                <div id="turnoverReport" class="report-content">
+                    <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-sync-alt"></i> Stock Turnover Analysis</h3>
+
+                    <!-- Filters -->
+                    <div class="filters-row">
+                        <select id="turnoverPeriod">
+                            <option value="30">Last 30 Days</option>
+                            <option value="60">Last 60 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="180">Last 6 Months</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                        <select id="turnoverBranchFilter">
+                            <option value="">All Branches</option>
+                        </select>
+                        <button class="export-btn" id="generateTurnoverReport">
+                            <i class="fas fa-chart-bar"></i> Generate Analysis
+                        </button>
+                    </div>
+
+                    <!-- Summary -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Turnover Ratio</div>
+                            <div class="metric-value" id="avgTurnoverRatio">0.0</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Avg Turnover Days</div>
+                            <div class="metric-value" id="avgTurnoverDays">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Turnover Table -->
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Current Stock</th>
+                                    <th>Inventory Value</th>
+                                    <th>Sold Quantity</th>
+                                    <th>COGS</th>
+                                    <th>Turnover Ratio</th>
+                                    <th>Turnover Days</th>
+                                    <th>Branch</th>
+                                </tr>
+                            </thead>
+                            <tbody id="turnoverTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                        Click "Generate Analysis" to view stock turnover
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Barcode Scanner Modal -->
     <div class="modal" id="scannerModal">
         <div class="modal-content">
@@ -964,10 +1438,11 @@
     <!-- Error Toast -->
     <div class="toast error" id="errorToast">
         <i class="fas fa-exclamation-circle"></i>
-        <span id="errorToastMessage">An error occurred!</span>
+        <span id="errorToastMessage">An error occurred!</span> 
     </div>
 
     <script type="module" src="../Script/inventorystockfollowup.js"></script>
+    <script type="module" src="../Script/InventoryReports.js"></script>
     <script type="module" src="../Script/stockfollowup.js"></script>
 </body>
 </html>
