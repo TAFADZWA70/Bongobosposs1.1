@@ -10,6 +10,20 @@ import {
     getChangeSummary,
     getDailyRecordsData
 } from './ChangeManagement.js';
+import {
+    initSalesModule,
+    loadAllSales,
+    getTodaysSales,
+    getSalesForDate,
+    getSalesForDateRange,
+    calculateSalesSummary,
+    getSalesByBranch,
+    getPeakSalesHours,
+    formatCurrency as formatSalesCurrency,
+    formatDateTime,
+    generateSalesReport
+} from './Sales.js';
+
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuZ980qpXORaxy_B10LNhUZ2KDfrngrwU",
@@ -102,7 +116,19 @@ async function loadUserData() {
             }, 2000);
             return;
         }
-
+        // Initialize sales module
+        try {
+            initSalesModule(
+                currentUser,
+                userData,
+                businessId,
+                businessData,
+                allBranches
+            );
+            await loadAllSales();
+        } catch (error) {
+            console.warn('Sales module initialization failed (non-critical):', error);
+        }
         await loadBusinessInfo();
         await loadBranches();
 
@@ -1395,6 +1421,495 @@ const expensePeriod = document.getElementById('expensePeriod');
 if (expensePeriod) {
     expensePeriod.addEventListener('change', setupExpenseBreakdownChart);
 }
+// =============================================================================
+// COMPREHENSIVE FINANCIAL REPORT
+// =============================================================================
+
+const financialReportBtn = document.getElementById('financialReportBtn');
+if (financialReportBtn) {
+    financialReportBtn.addEventListener('click', () => {
+        // Set defaults
+        document.getElementById('reportPeriod').value = 'month';
+        document.getElementById('reportStartDate').valueAsDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        document.getElementById('reportEndDate').valueAsDate = new Date();
+
+        document.getElementById('financialReportModal').classList.add('active');
+    });
+}
+
+// Report period change handler
+const reportPeriod = document.getElementById('reportPeriod');
+if (reportPeriod) {
+    reportPeriod.addEventListener('change', (e) => {
+        const customRange = document.getElementById('customDateRange');
+        if (e.target.value === 'custom') {
+            customRange.style.display = 'block';
+        } else {
+            customRange.style.display = 'none';
+        }
+    });
+}
+
+// Generate comprehensive financial report
+const generateReportBtn = document.getElementById('generateReportBtn');
+if (generateReportBtn) {
+    generateReportBtn.addEventListener('click', async () => {
+        const period = document.getElementById('reportPeriod').value;
+        let startDate, endDate;
+        const now = new Date();
+
+        if (period === 'month') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        } else if (period === 'quarter') {
+            const quarter = Math.floor(now.getMonth() / 3);
+            startDate = new Date(now.getFullYear(), quarter * 3, 1);
+            endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59);
+        } else if (period === 'year') {
+            startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+        } else if (period === 'custom') {
+            const startInput = document.getElementById('reportStartDate').value;
+            const endInput = document.getElementById('reportEndDate').value;
+
+            if (!startInput || !endInput) {
+                showToast('Please select start and end dates', 'error');
+                return;
+            }
+
+            startDate = new Date(startInput);
+            endDate = new Date(endInput);
+            endDate.setHours(23, 59, 59, 999);
+        }
+
+        setLoading(generateReportBtn, true);
+
+        try {
+            const reportData = await generateComprehensiveReport(startDate, endDate);
+            displayFinancialReport(reportData, startDate, endDate);
+            showToast('Financial report generated successfully', 'success');
+        } catch (error) {
+            console.error('Error generating report:', error);
+            showToast('Failed to generate financial report', 'error');
+        } finally {
+            setLoading(generateReportBtn, false);
+        }
+    });
+}
+
+// Generate comprehensive financial report data
+sync function generateComprehensiveReport(startDate, endDate) {
+    const currency = businessData?.currency || 'R';
+
+    // Use the sales module
+    const salesData = generateSalesReport(startDate, endDate, 'all');
+    const { sales, summary } = salesData;
+
+    // Fetch expenses data
+    const expensesRef = ref(db, `businesses/${businessId}/finances/expenses`);
+    const expensesSnap = await get(expensesRef);
+
+    const paymentRequestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
+    const paymentRequestsSnap = await get(paymentRequestsRef);
+
+    // Initialize report data with sales summary
+    let totalRevenue = summary.totalRevenue;
+    let totalTax = summary.totalTax;
+    let totalCost = summary.totalCost;
+    let totalSales = summary.totalSales;
+    let totalChangeGiven = summary.totalChangeGiven; // NEW: Track change given
+    let salesByBranch = salesData.byBranch;
+    let salesByPaymentMethod = {
+        cash: summary.totalCash,
+        card: summary.totalCard,
+        ewallet: summary.totalEWallet
+    };
+    let topProducts = summary.topProductsArray;
+    let peakHours = salesData.peakHours;
+
+    // Monthly breakdown
+    let monthlySales = {};
+    let monthlyExpenses = {};
+
+    // Process monthly sales
+    sales.forEach(sale => {
+        const saleDate = new Date(sale.soldAt || sale.date);
+        const monthKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlySales[monthKey]) {
+            monthlySales[monthKey] = 0;
+        }
+        monthlySales[monthKey] += sale.total;
+    });
+
+    // Process expenses
+    let totalExpenses = 0;
+    let expensesByCategory = {};
+
+    if (expensesSnap.exists()) {
+        const allExpenses = expensesSnap.val();
+
+        Object.values(allExpenses).forEach(expense => {
+            const expenseDate = new Date(expense.date);
+
+            if (expenseDate >= startDate && expenseDate <= endDate) {
+                totalExpenses += expense.amount;
+
+                const category = expense.type === 'custom' ? expense.customName : expense.type;
+                if (!expensesByCategory[category]) {
+                    expensesByCategory[category] = 0;
+                }
+                expensesByCategory[category] += expense.amount;
+
+                // Monthly breakdown
+                const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthlyExpenses[monthKey]) {
+                    monthlyExpenses[monthKey] = 0;
+                }
+                monthlyExpenses[monthKey] += expense.amount;
+            }
+        });
+    }
+
+    // Process payment requests
+    if (paymentRequestsSnap.exists()) {
+        const allRequests = paymentRequestsSnap.val();
+
+        Object.values(allRequests).forEach(request => {
+            if (request.status === 'approved') {
+                const approvalDate = new Date(request.authorizedAt);
+
+                if (approvalDate >= startDate && approvalDate <= endDate) {
+                    totalExpenses += request.amount;
+
+                    const category = request.purpose;
+                    if (!expensesByCategory[category]) {
+                        expensesByCategory[category] = 0;
+                    }
+                    expensesByCategory[category] += request.amount;
+
+                    // Monthly breakdown
+                    const monthKey = `${approvalDate.getFullYear()}-${String(approvalDate.getMonth() + 1).padStart(2, '0')}`;
+                    if (!monthlyExpenses[monthKey]) {
+                        monthlyExpenses[monthKey] = 0;
+                    }
+                    monthlyExpenses[monthKey] += request.amount;
+                }
+            }
+        });
+    }
+
+    // Calculate profit/loss
+    const grossProfit = totalRevenue - totalCost;
+    const netProfit = totalRevenue - totalExpenses;
+    const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const netProfitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    return {
+        summary: {
+            totalRevenue,
+            totalTax,
+            totalCost,
+            totalExpenses,
+            grossProfit,
+            netProfit,
+            grossProfitMargin,
+            netProfitMargin,
+            totalSales,
+            totalChangeGiven, // NEW
+            avgTransactionValue: totalSales > 0 ? totalRevenue / totalSales : 0
+        },
+        salesByBranch,
+        salesByPaymentMethod,
+        expensesByCategory,
+        topProducts,
+        monthlySales,
+        monthlyExpenses,
+        peakHours // NEW
+    };
+}
+// Display financial report
+function displayFinancialReport(reportData, startDate, endDate) {
+    const currency = businessData?.currency || 'R';
+    const { summary } = reportData;
+
+    const startDateStr = startDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const endDateStr = endDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const reportPreview = document.getElementById('reportPreview');
+
+    reportPreview.innerHTML = `
+        <div style="padding: 2rem; background: white; border-radius: 8px;">
+            <div style="text-align: center; border-bottom: 3px solid var(--primary-color); padding-bottom: 1rem; margin-bottom: 2rem;">
+                <h2 style="margin: 0; color: var(--primary-color);">COMPREHENSIVE FINANCIAL REPORT</h2>
+                <p style="margin: 0.5rem 0 0 0; color: var(--gray-600);">${businessData.businessName}</p>
+                <p style="margin: 0.25rem 0 0 0; color: var(--gray-600);">${startDateStr} - ${endDateStr}</p>
+            </div>
+
+            <!-- Executive Summary -->
+            <div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">Executive Summary</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.875rem; opacity: 0.9;">Total Revenue</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${currency} ${summary.totalRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.875rem; opacity: 0.9;">Total Expenses</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${currency} ${summary.totalExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.875rem; opacity: 0.9;">Net Profit</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: ${summary.netProfit >= 0 ? '#10b981' : '#ef4444'};">
+                            ${currency} ${summary.netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.875rem; opacity: 0.9;">Profit Margin</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${summary.netProfitMargin.toFixed(2)}%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Performance -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Financial Performance</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: var(--gray-100);">
+                        <td style="padding: 0.75rem; font-weight: 600;">Metric</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 600;">Amount</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 0.75rem;">Total Revenue</td>
+                        <td style="padding: 0.75rem; text-align: right;">${currency} ${summary.totalRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 0.75rem;">Cost of Goods Sold (COGS)</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">-${currency} ${summary.totalCost.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
+                        <td style="padding: 0.75rem; font-weight: 600;">Gross Profit</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: var(--secondary-color);">${currency} ${summary.grossProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 0.75rem;">Operating Expenses</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">-${currency} ${summary.totalExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr style="background: ${summary.netProfit >= 0 ? 'var(--success-bg)' : 'var(--danger-bg)'};">
+                        <td style="padding: 0.75rem; font-weight: 700; font-size: 1.1rem;">Net Profit/Loss</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 700; font-size: 1.1rem; color: ${summary.netProfit >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">
+                            ${currency} ${summary.netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Sales Analysis -->
+            <div style="margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Sales Analysis</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div style="background: var(--gray-100); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Total Transactions</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${summary.totalSales}</div>
+                    </div>
+                    <div style="background: var(--gray-100); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Average Transaction</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${currency} ${summary.avgTransactionValue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style="background: var(--gray-100); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.25rem;">Tax Collected</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;">${currency} ${summary.totalTax.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                </div>
+
+                 <!-- Change Management -->
+            <div style="margin-bottom: 1rem;">
+                <h4 style="margin: 1.5rem 0 0.5rem 0;">Cash Flow & Change Management</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div style="background: white; border: 2px solid var(--gray-200); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Cash Sales</div>
+                        <div style="font-size: 1.25rem; color: var(--success-color); font-weight: 700;">${currency} ${reportData.salesByPaymentMethod.cash.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style="background: white; border: 2px solid var(--danger-color); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Change Given</div>
+                        <div style="font-size: 1.25rem; color: var(--danger-color); font-weight: 700;">-${currency} ${summary.totalChangeGiven.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style="background: white; border: 2px solid var(--primary-color); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Net Cash</div>
+                        <div style="font-size: 1.25rem; color: var(--primary-color); font-weight: 700;">${currency} ${(reportData.salesByPaymentMethod.cash - summary.totalChangeGiven).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peak Sales Hours -->
+            ${reportData.peakHours && reportData.peakHours.length > 0 ? `
+                <div style="margin-bottom: 1rem;">
+                    <h4 style="margin: 1.5rem 0 0.5rem 0;">Peak Sales Hours</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        ${reportData.peakHours.map((peak, index) => `
+                            <div style="background: linear-gradient(135deg, ${index === 0 ? 'var(--primary-color)' : index === 1 ? 'var(--secondary-color)' : 'var(--accent-color)'}, ${index === 0 ? 'var(--secondary-color)' : index === 1 ? 'var(--accent-color)' : 'var(--primary-color)'}); color: white; padding: 1rem; border-radius: 8px;">
+                                <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">#${index + 1} Peak Hour</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${peak.timeRange}</div>
+                                <div style="font-size: 0.875rem;">${peak.sales} sales • ${currency} ${peak.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+                <!-- Sales by Payment Method -->
+                <h4 style="margin: 1.5rem 0 0.5rem 0;">Sales by Payment Method</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    ${Object.entries(reportData.salesByPaymentMethod).map(([method, amount]) => {
+        const percentage = summary.totalRevenue > 0 ? (amount / summary.totalRevenue * 100).toFixed(1) : 0;
+        return `
+                            <div style="background: white; border: 2px solid var(--gray-200); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;">${method}</div>
+                                <div style="font-size: 1.25rem; color: var(--primary-color); font-weight: 700;">${currency} ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">${percentage}%</div>
+                            </div>
+                        `;
+    }).join('')}
+                </div>
+            </div>
+
+            <!-- Sales by Branch -->
+            ${Object.keys(reportData.salesByBranch).length > 0 ? `
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Sales by Branch</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--gray-100);">
+                                <th style="padding: 0.75rem; text-align: left;">Branch</th>
+                                <th style="padding: 0.75rem; text-align: center;">Transactions</th>
+                                <th style="padding: 0.75rem; text-align: right;">Revenue</th>
+                                <th style="padding: 0.75rem; text-align: right;">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(reportData.salesByBranch)
+                .sort((a, b) => b[1].revenue - a[1].revenue)
+                .map(([branchId, data]) => {
+                    const percentage = (data.revenue / summary.totalRevenue * 100).toFixed(1);
+                    return `
+                                        <tr style="border-bottom: 1px solid var(--gray-200);">
+                                            <td style="padding: 0.75rem;"><strong>${data.name}</strong></td>
+                                            <td style="padding: 0.75rem; text-align: center;">${data.sales}</td>
+                                            <td style="padding: 0.75rem; text-align: right;">${currency} ${data.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                            <td style="padding: 0.75rem; text-align: right;">${percentage}%</td>
+                                        </tr>
+                                    `;
+                }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            <!-- Top Products -->
+            ${reportData.topProducts.length > 0 ? `
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Top 10 Products by Revenue</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--gray-100);">
+                                <th style="padding: 0.75rem; text-align: left;">Product</th>
+                                <th style="padding: 0.75rem; text-align: center;">Quantity Sold</th>
+                                <th style="padding: 0.75rem; text-align: right;">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reportData.topProducts.map((product, index) => `
+                                <tr style="border-bottom: 1px solid var(--gray-200);">
+                                    <td style="padding: 0.75rem;">
+                                        <span style="display: inline-block; width: 24px; height: 24px; background: var(--primary-color); color: white; border-radius: 50%; text-align: center; line-height: 24px; margin-right: 0.5rem; font-size: 0.75rem; font-weight: 700;">
+                                            ${index + 1}
+                                        </span>
+                                        <strong>${product.name}</strong>
+                                    </td>
+                                    <td style="padding: 0.75rem; text-align: center;">${product.quantity}</td>
+                                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">${currency} ${product.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            <!-- Expense Breakdown -->
+            ${Object.keys(reportData.expensesByCategory).length > 0 ? `
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Expense Breakdown</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--gray-100);">
+                                <th style="padding: 0.75rem; text-align: left;">Category</th>
+                                <th style="padding: 0.75rem; text-align: right;">Amount</th>
+                                <th style="padding: 0.75rem; text-align: right;">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(reportData.expensesByCategory)
+                .sort((a, b) => b[1] - a[1])
+                .map(([category, amount]) => {
+                    const percentage = (amount / summary.totalExpenses * 100).toFixed(1);
+                    return `
+                                        <tr style="border-bottom: 1px solid var(--gray-200);">
+                                            <td style="padding: 0.75rem;"><strong>${category.toUpperCase()}</strong></td>
+                                            <td style="padding: 0.75rem; text-align: right;">${currency} ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                            <td style="padding: 0.75rem; text-align: right;">${percentage}%</td>
+                                        </tr>
+                                    `;
+                }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : ''}
+
+            <!-- Conclusion -->
+            <div style="background: ${summary.netProfit >= 0 ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)'}; color: white; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">Financial Status</h3>
+                <p style="margin: 0; font-size: 1.125rem; line-height: 1.6;">
+                    ${summary.netProfit >= 0
+            ? `Your business generated a <strong>net profit of ${currency} ${Math.abs(summary.netProfit).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong> during this period, with a profit margin of <strong>${summary.netProfitMargin.toFixed(2)}%</strong>. This represents healthy financial performance.`
+            : `Your business incurred a <strong>net loss of ${currency} ${Math.abs(summary.netProfit).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</strong> during this period. Consider reviewing your expenses and exploring strategies to increase revenue or reduce costs.`
+        }
+                </p>
+            </div>
+
+            <!-- Report Footer -->
+            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--gray-200); text-align: center; color: var(--gray-600);">
+                <p style="margin: 0; font-size: 0.875rem;">Report generated on ${new Date().toLocaleString('en-ZA')}</p>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">BongoBoss Enterprise POS System</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn-primary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print Report
+                </button>
+                <button class="btn-secondary" onclick="downloadFinancialReportPDF()">
+                    <i class="fas fa-file-pdf"></i> Download PDF
+                </button>
+            </div>
+        </div>
+    `;
+
+    reportPreview.style.display = 'block';
+}
+
+// Download financial report as PDF (placeholder - requires PDF library)
+window.downloadFinancialReportPDF = function () {
+    showToast('PDF download functionality will be added soon. Please use Print to save as PDF.', 'success');
+};
+
+// Close financial report modal
+const closeFinancialReportModal = document.getElementById('closeFinancialReportModal');
+if (closeFinancialReportModal) {
+    closeFinancialReportModal.addEventListener('click', () => {
+        document.getElementById('financialReportModal').classList.remove('active');
+        const reportPreview = document.getElementById('reportPreview');
+        if (reportPreview) reportPreview.style.display = 'none';
+    });
+}
 
 // Close modals
 document.querySelectorAll('[id^="close"], [id^="cancel"]').forEach(btn => {
@@ -1403,5 +1918,236 @@ document.querySelectorAll('[id^="close"], [id^="cancel"]').forEach(btn => {
         if (modal) modal.classList.remove('active');
     });
 });
+
+const viewSalesBtn = document.getElementById('viewSalesBtn');
+if (viewSalesBtn) {
+    viewSalesBtn.addEventListener('click', () => {
+        // Set today's date as default
+        document.getElementById('salesViewDate').valueAsDate = new Date();
+        displayDailySales();
+        const modal = document.getElementById('viewSalesModal');
+        if (modal) modal.classList.add('active');
+    });
+}
+
+// Daily sales display
+function displayDailySales() {
+    const date = document.getElementById('salesViewDate')?.value || new Date().toISOString().split('T')[0];
+    const branchId = document.getElementById('salesBranchFilter')?.value || 'all';
+
+    const sales = getSalesForDate(date, branchId);
+    const summary = calculateSalesSummary(sales);
+
+    // Update summary cards
+    updateSalesSummaryCards(summary);
+
+    // Display sales table
+    displaySalesTable(sales);
+
+    // Display peak hours
+    displayPeakHours(sales);
+}
+
+// Update sales summary cards
+function updateSalesSummaryCards(summary) {
+    const currency = businessData?.currency || 'R';
+
+    document.getElementById('salesTotalSales').textContent = summary.totalSales;
+    document.getElementById('salesTotalRevenue').textContent = `${currency} ${summary.totalRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    document.getElementById('salesChangeGiven').textContent = `${currency} ${summary.totalChangeGiven.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    document.getElementById('salesAvgTransaction').textContent = `${currency} ${summary.averageTransaction.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+
+    // Payment method breakdown
+    document.getElementById('salesCashTotal').textContent = `${currency} ${summary.totalCash.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    document.getElementById('salesCardTotal').textContent = `${currency} ${summary.totalCard.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    document.getElementById('salesEwalletTotal').textContent = `${currency} ${summary.totalEWallet.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+
+    document.getElementById('salesCashCount').textContent = `${summary.cashSales} sales`;
+    document.getElementById('salesCardCount').textContent = `${summary.cardSales} sales`;
+    document.getElementById('salesEwalletCount').textContent = `${summary.ewalletSales} sales`;
+}
+
+// Display sales table
+function displaySalesTable(sales) {
+    const tbody = document.getElementById('salesTableBody');
+    if (!tbody) return;
+
+    const currency = businessData?.currency || 'R';
+
+    if (sales.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    No sales found for the selected date
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = sales.map(sale => {
+        const itemCount = sale.items ? sale.items.length : 0;
+        const paymentBadge = sale.paymentMethod === 'cash' ? 'success' :
+            sale.paymentMethod === 'card' ? 'primary' : 'accent';
+
+        return `
+            <tr>
+                <td><strong>${sale.receiptNumber}</strong></td>
+                <td>${formatDateTime(sale.soldAt || sale.date)}</td>
+                <td>${sale.branchName || 'N/A'}</td>
+                <td>${itemCount} item(s)</td>
+                <td><strong>${currency} ${(sale.total || 0).toFixed(2)}</strong></td>
+                <td><span class="badge ${paymentBadge}">${(sale.paymentMethod || 'unknown').toUpperCase()}</span></td>
+                <td>${sale.paymentMethod === 'cash' ? `${currency} ${(sale.change || 0).toFixed(2)}` : '-'}</td>
+                <td>
+                    <button class="icon-btn" onclick="viewSaleDetails('${sale.saleId}')" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Display peak hours
+function displayPeakHours(sales) {
+    const peakHours = getPeakSalesHours(sales, 3);
+    const container = document.getElementById('peakHoursList');
+    if (!container) return;
+
+    const currency = businessData?.currency || 'R';
+
+    if (peakHours.length === 0) {
+        container.innerHTML = '<p style="color: #94a3b8;">No peak hours data</p>';
+        return;
+    }
+
+    container.innerHTML = peakHours.map((peak, index) => `
+        <div style="background: var(--gray-100); padding: 1rem; border-radius: 8px; border-left: 4px solid var(--${index === 0 ? 'primary' : index === 1 ? 'secondary' : 'accent'}-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 600; color: var(--dark-text);">${peak.timeRange}</div>
+                    <div style="font-size: 0.875rem; color: var(--gray-600);">${peak.sales} sales</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 700; color: var(--primary-color);">${currency} ${peak.revenue.toFixed(2)}</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// View sale details
+window.viewSaleDetails = function (saleId) {
+    const sale = getSaleById(saleId);
+    if (!sale) return;
+
+    const currency = businessData?.currency || 'R';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Sale Details - ${sale.receiptNumber}</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <strong>Date & Time:</strong><br>
+                        ${formatDateTime(sale.soldAt || sale.date)}
+                    </div>
+                    <div>
+                        <strong>Branch:</strong><br>
+                        ${sale.branchName || 'N/A'}
+                    </div>
+                    <div>
+                        <strong>Cashier:</strong><br>
+                        ${sale.cashierName || 'N/A'}
+                    </div>
+                    <div>
+                        <strong>Payment Method:</strong><br>
+                        <span class="badge ${sale.paymentMethod === 'cash' ? 'success' : 'primary'}">${(sale.paymentMethod || 'unknown').toUpperCase()}</span>
+                    </div>
+                </div>
+
+                <h3 style="margin: 1.5rem 0 1rem 0;">Items Sold</h3>
+                <table class="finance-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(sale.items || []).map(item => `
+                            <tr>
+                                <td>${item.productName}</td>
+                                <td>${item.quantity}</td>
+                                <td>${currency} ${(item.price || 0).toFixed(2)}</td>
+                                <td><strong>${currency} ${(item.subtotal || 0).toFixed(2)}</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--gray-100); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Subtotal:</span>
+                        <strong>${currency} ${((sale.total || 0) - (sale.tax || 0)).toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span>Tax (15%):</span>
+                        <strong>${currency} ${(sale.tax || 0).toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 2px solid var(--gray-300); font-size: 1.25rem;">
+                        <span>Total:</span>
+                        <strong style="color: var(--primary-color);">${currency} ${(sale.total || 0).toFixed(2)}</strong>
+                    </div>
+                    ${sale.paymentMethod === 'cash' ? `
+                        <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-300);">
+                            <div>
+                                <div style="color: var(--gray-600); font-size: 0.875rem;">Amount Paid</div>
+                                <strong>${currency} ${(sale.amountPaid || 0).toFixed(2)}</strong>
+                            </div>
+                            <div>
+                                <div style="color: var(--gray-600); font-size: 0.875rem;">Change Given</div>
+                                <strong style="color: var(--danger-color);">${currency} ${(sale.change || 0).toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+};
+
+// Sales date change
+const salesViewDate = document.getElementById('salesViewDate');
+if (salesViewDate) {
+    salesViewDate.addEventListener('change', displayDailySales);
+}
+
+// Sales branch filter change
+const salesBranchFilter = document.getElementById('salesBranchFilter');
+if (salesBranchFilter) {
+    salesBranchFilter.addEventListener('change', displayDailySales);
+}
+
+// Close sales modal
+const closeViewSalesModal = document.getElementById('closeViewSalesModal');
+if (closeViewSalesModal) {
+    closeViewSalesModal.addEventListener('click', () => {
+        document.getElementById('viewSalesModal').classList.remove('active');
+    });
+}
 
 console.log('BongoBoss POS - Finance Management FULLY WORKING ✓');

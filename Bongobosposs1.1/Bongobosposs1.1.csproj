@@ -124,6 +124,7 @@
     <Content Include="Script\Login.js" />
     <Content Include="Script\owanerdashboard.js" />
     <Content Include="Script\Register.js" />
+    <Content Include="Script\sales.js" />
     <Content Include="Script\stockfollowup.js" />
     <Content Include="Script\stocktaking-page.js" />
     <Content Include="Script\stocktaking.js" />

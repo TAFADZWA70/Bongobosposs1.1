@@ -17,7 +17,7 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 
 /**
- * CHANGE MANAGEMENT SYSTEM
+ * CHANGE MANAGEMENT SYSTEM WITH REAL-TIME TRACKING
  * 
  * DATABASE STRUCTURE:
  * /businesses/{businessId}/changeManagement/
@@ -41,6 +41,9 @@ const db = getDatabase(app);
  *   │   ├── totalCoins (calculated)
  *   │   ├── totalNotes (calculated)
  *   │   ├── totalChange (calculated)
+ *   │   ├── initialAmount (starting amount for the day)
+ *   │   ├── currentAmount (amount after change given out)
+ *   │   ├── changeGivenOut (total change given to customers)
  *   │   ├── recordedBy
  *   │   ├── recordedByName
  *   │   ├── recordedAt (timestamp)
@@ -52,9 +55,10 @@ const db = getDatabase(app);
  *       ├── recordId
  *       ├── date
  *       ├── branchId
- *       ├── action (created, updated, archived)
+ *       ├── action (created, updated, archived, change-given)
  *       ├── oldValue
  *       ├── newValue
+ *       ├── notes
  *       ├── changedBy
  *       ├── changedByName
  *       └── timestamp
@@ -195,6 +199,9 @@ export async function recordDailyChange(changeData) {
             totalCoins: totals.totalCoins,
             totalNotes: totals.totalNotes,
             totalChange: totals.totalChange,
+            initialAmount: totals.totalChange, // Track initial amount
+            currentAmount: totals.totalChange, // Track current amount after transactions
+            changeGivenOut: 0, // Track change given to customers
             recordedBy: generateCleanId(currentUser.email),
             recordedByName: userData.displayName,
             recordedAt: new Date().toISOString(),
@@ -229,6 +236,61 @@ export async function recordDailyChange(changeData) {
     }
 }
 
+// Deduct change from daily record when a sale is made
+export async function deductChangeFromRecord(branchId, changeAmount, saleDetails) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Find today's record for this branch
+        const recordEntry = Object.entries(dailyRecords).find(([_, record]) =>
+            record.date === today &&
+            record.branchId === branchId &&
+            record.status === 'active'
+        );
+
+        if (!recordEntry) {
+            console.warn('No active change record found for today');
+            return { success: false, message: 'No active change record' };
+        }
+
+        const [recordId, record] = recordEntry;
+        const newCurrentAmount = record.currentAmount - changeAmount;
+        const newChangeGivenOut = (record.changeGivenOut || 0) + changeAmount;
+
+        // Update the record
+        const recordRef = ref(db, `businesses/${businessId}/changeManagement/dailyRecords/${recordId}`);
+        await update(recordRef, {
+            currentAmount: parseFloat(newCurrentAmount.toFixed(2)),
+            changeGivenOut: parseFloat(newChangeGivenOut.toFixed(2)),
+            lastModifiedBy: userData?.displayName || 'System',
+            lastModifiedAt: new Date().toISOString()
+        });
+
+        // Log the change transaction
+        await logChangeHistory({
+            recordId: recordId,
+            date: today,
+            branchId: branchId,
+            action: 'change-given',
+            oldValue: `Current: R${record.currentAmount.toFixed(2)}`,
+            newValue: `Current: R${newCurrentAmount.toFixed(2)} (Change: R${changeAmount.toFixed(2)})`,
+            notes: `Sale #${saleDetails.receiptNumber} - Change given to customer`
+        });
+
+        await loadDailyRecords();
+
+        return {
+            success: true,
+            newAmount: newCurrentAmount,
+            message: `Change deducted: R${changeAmount.toFixed(2)}`
+        };
+
+    } catch (error) {
+        console.error('Error deducting change:', error);
+        throw error;
+    }
+}
+
 // Update daily change record
 export async function updateDailyChange(recordId, changeData) {
     try {
@@ -254,6 +316,8 @@ export async function updateDailyChange(recordId, changeData) {
             totalCoins: totals.totalCoins,
             totalNotes: totals.totalNotes,
             totalChange: totals.totalChange,
+            initialAmount: totals.totalChange,
+            currentAmount: totals.totalChange - (oldRecord.changeGivenOut || 0),
             lastModifiedBy: userData.displayName,
             lastModifiedAt: new Date().toISOString()
         };
@@ -383,6 +447,8 @@ export function getChangeSummary(startDate, endDate, branchId = 'all') {
             totalCoins: 0,
             totalNotes: 0,
             totalChange: 0,
+            totalChangeGivenOut: 0,
+            totalCurrentAmount: 0,
             highestChange: 0,
             lowestChange: 0
         };
@@ -392,8 +458,10 @@ export function getChangeSummary(startDate, endDate, branchId = 'all') {
         acc.totalCoins += record.totalCoins;
         acc.totalNotes += record.totalNotes;
         acc.totalChange += record.totalChange;
+        acc.totalChangeGivenOut += record.changeGivenOut || 0;
+        acc.totalCurrentAmount += record.currentAmount || record.totalChange;
         return acc;
-    }, { totalCoins: 0, totalNotes: 0, totalChange: 0 });
+    }, { totalCoins: 0, totalNotes: 0, totalChange: 0, totalChangeGivenOut: 0, totalCurrentAmount: 0 });
 
     const changes = relevantRecords.map(([_, r]) => r.totalChange);
 
@@ -403,6 +471,8 @@ export function getChangeSummary(startDate, endDate, branchId = 'all') {
         totalCoins: parseFloat(totals.totalCoins.toFixed(2)),
         totalNotes: parseFloat(totals.totalNotes.toFixed(2)),
         totalChange: parseFloat(totals.totalChange.toFixed(2)),
+        totalChangeGivenOut: parseFloat(totals.totalChangeGivenOut.toFixed(2)),
+        totalCurrentAmount: parseFloat(totals.totalCurrentAmount.toFixed(2)),
         highestChange: parseFloat(Math.max(...changes).toFixed(2)),
         lowestChange: parseFloat(Math.min(...changes).toFixed(2))
     };
@@ -480,23 +550,7 @@ async function logChangeHistory(changeData) {
     }
 }
 
-// Format currency
-function formatCurrency(amount) {
-    const currency = businessData?.currency || 'R';
-    return `${currency} ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// Format date
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-ZA', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-// Update change display (to be implemented in UI)
+// Update change display
 function updateChangeDisplay() {
     console.log('Daily change records loaded:', Object.keys(dailyRecords).length);
 }
@@ -522,4 +576,4 @@ export function hasChangeForToday(branchId) {
     return getDailyChange(today, branchId) !== null;
 }
 
-console.log('BongoBoss POS - Change Management Module Initialized ✓');
+console.log('BongoBoss POS - Change Management Module with Real-Time Tracking Initialized ✓');

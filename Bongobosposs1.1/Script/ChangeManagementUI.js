@@ -2,7 +2,7 @@
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
 import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-database.js";
 
-// Import change management module
+// Import change management module - FIXED: Changed from './changemanagement.js' to './ChangeManagement.js'
 import {
     initChangeManagement,
     recordDailyChange,
@@ -16,7 +16,7 @@ import {
     getChangeHistoryData,
     getTodaysChange,
     hasChangeForToday
-} from './changemanagement.js';
+} from './ChangeManagement.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuZ980qpXORaxy_B10LNhUZ2KDfrngrwU",
@@ -112,8 +112,8 @@ async function loadUserData() {
         await loadBusinessInfo();
         await loadBranches();
 
-        // Initialize change management module
-        initChangeManagement(
+        // Initialize change management module - IMPORTANT: Must be called before updating UI
+        await initChangeManagement(
             currentUser,
             userData,
             businessId,
@@ -121,14 +121,16 @@ async function loadUserData() {
             allBranches
         );
 
-        // Setup UI
-        setupUI();
-        updateDashboardStats();
-        displayTodaysChange();
-        displayRecentRecords();
+        // Wait a bit for data to load, then setup UI
+        setTimeout(() => {
+            setupUI();
+            updateDashboardStats();
+            displayTodaysChange();
+            displayRecentRecords();
 
-        // Hide loading screen
-        document.getElementById('loadingScreen').classList.add('hidden');
+            // Hide loading screen
+            document.getElementById('loadingScreen').classList.add('hidden');
+        }, 500);
 
     } catch (error) {
         console.error('Error loading user data:', error);
@@ -275,9 +277,13 @@ function updateDashboardStats() {
     const currency = businessData?.currency || 'R';
     const records = getDailyRecordsData();
 
+    console.log('Updating dashboard stats. Total records:', Object.keys(records).length);
+
     // Get today's change for all branches
     const today = new Date().toISOString().split('T')[0];
     const todayRecords = Object.values(records).filter(r => r.date === today && r.status === 'active');
+
+    console.log('Today\'s records found:', todayRecords.length);
 
     let todaysTotal = 0;
     todayRecords.forEach(record => {
@@ -652,6 +658,7 @@ if (recordChangeForm) {
             const modal = document.getElementById('recordChangeModal');
             if (modal) modal.classList.remove('active');
 
+            // Refresh displays
             updateDashboardStats();
             displayTodaysChange();
             displayRecentRecords();
