@@ -2392,6 +2392,1387 @@ if (closeFinancialReportModal) {
         if (reportPreview) reportPreview.style.display = 'none';
     });
 }
+// PART 2 - Dashboard Stats and Display Functions
 
-console.log('=== ✓✓✓ All Financial Report Functions Loaded ✓✓✓ ===');
-console.log('BongoBoss POS - Finance Management FULLY OPERATIONAL ✓');
+// Update dashboard statistics - WITH ENHANCED ERROR HANDLING
+async function updateDashboardStats() {
+    try {
+        console.log('Updating dashboard stats...');
+        const currency = businessData?.currency || 'R';
+
+        // Calculate cash on hand from change management
+        const today = new Date().toISOString().split('T')[0];
+        let changeRecords = {};
+
+        try {
+            changeRecords = getDailyRecordsData();
+        } catch (error) {
+            console.warn('Change management not available:', error);
+            changeRecords = {};
+        }
+
+        let initialCashOnHand = 0;
+        let coinsAmount = 0;
+        let notesAmount = 0;
+
+        // Sum up today's starting change
+        if (changeRecords && typeof changeRecords === 'object') {
+            Object.values(changeRecords).forEach(record => {
+                if (record.date === today && record.status === 'active') {
+                    initialCashOnHand += record.totalChange || 0;
+                    coinsAmount += record.totalCoins || 0;
+                    notesAmount += record.totalNotes || 0;
+                }
+            });
+        }
+
+        // Fetch today's sales for cash flow calculation
+        let salesSnap = null;
+        try {
+            const salesRef = ref(db, `businesses/${businessId}/sales`);
+            salesSnap = await get(salesRef);
+        } catch (error) {
+            console.warn('Could not fetch sales data:', error);
+        }
+
+        let totalChangeGivenOut = 0;
+        let totalCashReceived = 0;
+
+        if (salesSnap && salesSnap.exists()) {
+            const allSales = salesSnap.val();
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date).toISOString().split('T')[0];
+
+                if (saleDate === today && sale.paymentMethod === 'cash') {
+                    totalCashReceived += sale.amountPaid || sale.total || 0;
+                    totalChangeGivenOut += sale.change || 0;
+                }
+            });
+        }
+
+        // Calculate expenses paid today
+        let expensesPaidOut = 0;
+
+        if (expenses && typeof expenses === 'object') {
+            Object.values(expenses).forEach(expense => {
+                if (new Date(expense.date).toISOString().split('T')[0] === today) {
+                    expensesPaidOut += expense.amount || 0;
+                }
+            });
+        }
+
+        if (paymentRequests && typeof paymentRequests === 'object') {
+            Object.values(paymentRequests).forEach(request => {
+                if (request.status === 'approved' && request.authorizedAt) {
+                    if (new Date(request.authorizedAt).toISOString().split('T')[0] === today) {
+                        expensesPaidOut += request.amount || 0;
+                    }
+                }
+            });
+        }
+
+        // DYNAMIC CASH ON HAND = Starting + Received - Change - Expenses
+        const actualCashOnHand = initialCashOnHand + totalCashReceived - totalChangeGivenOut - expensesPaidOut;
+
+        const cashOnHandEl = document.getElementById('cashOnHand');
+        const cashChangeEl = document.getElementById('cashChange');
+
+        if (cashOnHandEl) {
+            cashOnHandEl.textContent = `${currency} ${actualCashOnHand.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (cashChangeEl) {
+            cashChangeEl.innerHTML = `
+                <div style="font-size: 0.85rem;">
+                    Start: ${currency} ${initialCashOnHand.toFixed(2)} | 
+                    In: +${currency} ${totalCashReceived.toFixed(2)} | 
+                    Out: -${currency} ${(totalChangeGivenOut + expensesPaidOut).toFixed(2)}
+                </div>
+            `;
+        }
+
+        // Calculate monthly revenue from POS sales
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        let monthlyRevenue = 0;
+
+        if (salesSnap && salesSnap.exists()) {
+            const allSales = salesSnap.val();
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date);
+                if (saleDate >= startOfMonth) {
+                    monthlyRevenue += sale.total || 0;
+                }
+            });
+        }
+
+        // Add manual revenue transactions
+        if (transactions && Array.isArray(transactions)) {
+            transactions.forEach(transaction => {
+                if (transaction.type === 'revenue' && new Date(transaction.timestamp) >= startOfMonth) {
+                    monthlyRevenue += transaction.amount || 0;
+                }
+            });
+        }
+
+        const totalRevenueEl = document.getElementById('totalRevenue');
+        const revenueChangeEl = document.getElementById('revenueChange');
+
+        if (totalRevenueEl) {
+            totalRevenueEl.textContent = `${currency} ${monthlyRevenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (revenueChangeEl) {
+            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            let lastMonthRevenue = 0;
+
+            if (salesSnap && salesSnap.exists()) {
+                const allSales = salesSnap.val();
+                Object.values(allSales).forEach(sale => {
+                    const saleDate = new Date(sale.soldAt || sale.date);
+                    if (saleDate >= lastMonthStart && saleDate <= lastMonthEnd) {
+                        lastMonthRevenue += sale.total || 0;
+                    }
+                });
+            }
+
+            const revenueChange = lastMonthRevenue > 0
+                ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1)
+                : 0;
+
+            revenueChangeEl.innerHTML = `
+                <i class="fas fa-arrow-${revenueChange >= 0 ? 'up' : 'down'}"></i>
+                ${revenueChange >= 0 ? '+' : ''}${revenueChange}% vs last month
+            `;
+            revenueChangeEl.className = revenueChange >= 0 ? 'stat-change positive' : 'stat-change negative';
+        }
+
+        // Calculate monthly expenses
+        let monthlyExpenses = 0;
+
+        if (expenses && typeof expenses === 'object') {
+            Object.values(expenses).forEach(expense => {
+                if (new Date(expense.date) >= startOfMonth) {
+                    monthlyExpenses += expense.amount || 0;
+                }
+            });
+        }
+
+        if (paymentRequests && typeof paymentRequests === 'object') {
+            Object.values(paymentRequests).forEach(request => {
+                if (request.status === 'approved' && new Date(request.authorizedAt) >= startOfMonth) {
+                    monthlyExpenses += request.amount || 0;
+                }
+            });
+        }
+
+        const totalExpensesEl = document.getElementById('totalExpenses');
+        const expensesChangeEl = document.getElementById('expensesChange');
+
+        if (totalExpensesEl) {
+            totalExpensesEl.textContent = `${currency} ${monthlyExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+        }
+
+        if (expensesChangeEl) {
+            const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            let lastMonthExpenses = 0;
+
+            if (expenses && typeof expenses === 'object') {
+                Object.values(expenses).forEach(expense => {
+                    const expenseDate = new Date(expense.date);
+                    if (expenseDate >= lastMonthStart && expenseDate <= lastMonthEnd) {
+                        lastMonthExpenses += expense.amount || 0;
+                    }
+                });
+            }
+
+            if (paymentRequests && typeof paymentRequests === 'object') {
+                Object.values(paymentRequests).forEach(request => {
+                    if (request.status === 'approved') {
+                        const approvalDate = new Date(request.authorizedAt);
+                        if (approvalDate >= lastMonthStart && approvalDate <= lastMonthEnd) {
+                            lastMonthExpenses += request.amount || 0;
+                        }
+                    }
+                });
+            }
+
+            const expensesChange = lastMonthExpenses > 0
+                ? ((monthlyExpenses - lastMonthExpenses) / lastMonthExpenses * 100).toFixed(1)
+                : 0;
+
+            expensesChangeEl.innerHTML = `
+                <i class="fas fa-arrow-${expensesChange >= 0 ? 'up' : 'down'}"></i>
+                ${expensesChange >= 0 ? '+' : ''}${expensesChange}% vs last month
+            `;
+            expensesChangeEl.className = expensesChange >= 0 ? 'stat-change negative' : 'stat-change positive';
+        }
+
+        // Calculate net profit
+        const netProfit = monthlyRevenue - monthlyExpenses;
+        const profitMargin = monthlyRevenue > 0 ? ((netProfit / monthlyRevenue) * 100).toFixed(2) : 0;
+
+        const netProfitEl = document.getElementById('netProfit');
+        const profitMarginEl = document.getElementById('profitMargin');
+
+        if (netProfitEl) {
+            netProfitEl.textContent = `${currency} ${netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+            netProfitEl.style.color = netProfit >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
+        }
+
+        if (profitMarginEl) {
+            profitMarginEl.textContent = `${profitMargin}% margin`;
+            profitMarginEl.style.color = parseFloat(profitMargin) >= 0 ? 'var(--secondary-color)' : 'var(--danger-color)';
+        }
+
+        console.log('✓ Dashboard stats updated:', {
+            actualCashOnHand,
+            monthlyRevenue,
+            monthlyExpenses,
+            netProfit
+        });
+
+    } catch (error) {
+        console.error('Error updating dashboard stats:', error);
+        // Don't throw - allow page to continue
+    }
+}
+
+// Display pending payment requests
+function displayPendingRequests() {
+    const tbody = document.getElementById('pendingRequestsBody');
+    if (!tbody) return;
+
+    const currency = businessData?.currency || 'R';
+
+    const pendingRequests = Object.entries(paymentRequests)
+        .filter(([_, request]) => request.status === 'pending')
+        .sort((a, b) => new Date(b[1].requestedAt) - new Date(a[1].requestedAt));
+
+    const pendingCountEl = document.getElementById('pendingCount');
+    if (pendingCountEl) {
+        pendingCountEl.textContent = pendingRequests.length;
+    }
+
+    if (pendingRequests.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    No pending requests
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = pendingRequests.map(([requestId, request]) => `
+        <tr>
+            <td>${formatDate(request.requestedAt)}</td>
+            <td>${request.requestedByName}</td>
+            <td><strong>${currency} ${request.amount.toFixed(2)}</strong></td>
+            <td><span class="badge ${request.purpose}">${request.purpose.toUpperCase()}</span></td>
+            <td><span class="status-badge pending"><i class="fas fa-clock"></i> Pending</span></td>
+            <td>
+                <div class="action-buttons">
+                    ${hasPermission('authorize-payment') ? `
+                        <button class="btn-approve" onclick="approvePayment('${requestId}')">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn-reject" onclick="rejectPayment('${requestId}')">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    ` : `
+                        <span style="color: var(--gray-500);">Awaiting authorization</span>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Display recent transactions
+function displayRecentTransactions() {
+    const container = document.getElementById('transactionsList');
+    if (!container) return;
+
+    const currency = businessData?.currency || 'R';
+
+    const recentTransactions = transactions.slice(0, 10);
+
+    if (recentTransactions.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                No recent transactions
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = recentTransactions.map(transaction => {
+        const isRevenue = transaction.type === 'revenue';
+        const icon = isRevenue ? 'fa-arrow-up' : 'fa-arrow-down';
+
+        return `
+            <div class="transaction-item ${isRevenue ? 'revenue' : 'expense'}">
+                <div class="transaction-info">
+                    <div class="transaction-icon">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <h4>${transaction.description}</h4>
+                        <p>${transaction.branchId ? allBranches[transaction.branchId]?.branchName || 'Unknown Branch' : 'All Branches'}</p>
+                    </div>
+                </div>
+                <div class="transaction-amount">
+                    <div class="amount-value ${isRevenue ? 'positive' : 'negative'}">
+                        ${isRevenue ? '+' : '-'}${currency} ${transaction.amount.toFixed(2)}
+                    </div>
+                    <div class="amount-time">${formatTimeAgo(transaction.timestamp)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}// PART 3 - CHART FUNCTIONS (FIXED TO USE REAL SALES DATA)
+
+// Setup charts wrapper - UPDATED WITH ASYNC
+async function setupCharts() {
+    try {
+        await setupRevenueExpensesChart();
+        await setupExpenseBreakdownChart();
+        console.log('✓ All charts initialized with real data');
+    } catch (error) {
+        console.error('Error in setupCharts:', error);
+    }
+}
+
+// NEW FUNCTION: Calculate revenue from actual POS sales
+async function calculateRevenueForPeriodFromSales(start, end) {
+    try {
+        let total = 0;
+
+        // Get sales data from Firebase
+        const salesRef = ref(db, `businesses/${businessId}/sales`);
+        const salesSnap = await get(salesRef);
+
+        if (salesSnap.exists()) {
+            const allSales = salesSnap.val();
+
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date);
+
+                if (saleDate >= start && saleDate <= end) {
+                    total += sale.total || 0;
+                }
+            });
+        }
+
+        return total;
+    } catch (error) {
+        console.error('Error calculating revenue from sales:', error);
+        return 0;
+    }
+}
+
+// Calculate expenses for period (KEPT FROM ORIGINAL)
+function calculateExpensesForPeriod(start, end) {
+    let total = 0;
+
+    if (expenses && typeof expenses === 'object') {
+        Object.values(expenses).forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            if (expenseDate >= start && expenseDate <= end) {
+                total += expense.amount || 0;
+            }
+        });
+    }
+
+    if (paymentRequests && typeof paymentRequests === 'object') {
+        Object.values(paymentRequests).forEach(request => {
+            if (request.status === 'approved') {
+                const approvalDate = new Date(request.authorizedAt);
+                if (approvalDate >= start && approvalDate <= end) {
+                    total += request.amount || 0;
+                }
+            }
+        });
+    }
+
+    return total;
+}
+
+// ASYNC VERSION of getChartData for proper data loading
+async function getChartDataAsync(period) {
+    const now = new Date();
+    let labels = [];
+    let revenueData = [];
+    let expenseData = [];
+
+    if (period === 'week') {
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            labels.push(date.toLocaleDateString('en-ZA', { weekday: 'short' }));
+
+            const dayStart = new Date(date);
+            dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(date);
+            dayEnd.setHours(23, 59, 59, 999);
+
+            const revenue = await calculateRevenueForPeriodFromSales(dayStart, dayEnd);
+            const expense = calculateExpensesForPeriod(dayStart, dayEnd);
+
+            revenueData.push(revenue);
+            expenseData.push(expense);
+        }
+    } else if (period === 'month') {
+        const weeksInMonth = 4;
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        for (let i = 0; i < weeksInMonth; i++) {
+            labels.push(`Week ${i + 1}`);
+
+            const weekStart = new Date(monthStart);
+            weekStart.setDate(monthStart.getDate() + (i * 7));
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+
+            const revenue = await calculateRevenueForPeriodFromSales(weekStart, weekEnd);
+            const expense = calculateExpensesForPeriod(weekStart, weekEnd);
+
+            revenueData.push(revenue);
+            expenseData.push(expense);
+        }
+    } else if (period === 'quarter') {
+        for (let i = 2; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
+
+            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+
+            const revenue = await calculateRevenueForPeriodFromSales(monthStart, monthEnd);
+            const expense = calculateExpensesForPeriod(monthStart, monthEnd);
+
+            revenueData.push(revenue);
+            expenseData.push(expense);
+        }
+    } else if (period === 'year') {
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
+
+            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+
+            const revenue = await calculateRevenueForPeriodFromSales(monthStart, monthEnd);
+            const expense = calculateExpensesForPeriod(monthStart, monthEnd);
+
+            revenueData.push(revenue);
+            expenseData.push(expense);
+        }
+    }
+
+    return { labels, revenueData, expenseData };
+}
+
+// UPDATED: Setup revenue vs expenses chart with async data loading
+async function setupRevenueExpensesChart() {
+    const canvas = document.getElementById('revenueExpensesChart');
+    if (!canvas) {
+        console.warn('Revenue chart canvas not found');
+        return;
+    }
+
+    try {
+        const ctx = canvas.getContext('2d');
+        const period = document.getElementById('chartPeriod')?.value || 'month';
+
+        // Show loading indicator
+        canvas.style.opacity = '0.5';
+
+        // Get data asynchronously
+        const chartData = await getChartDataAsync(period);
+        const { labels, revenueData, expenseData } = chartData;
+
+        // Destroy existing chart
+        if (revenueExpensesChart) {
+            revenueExpensesChart.destroy();
+        }
+
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js not loaded');
+            canvas.style.opacity = '1';
+            return;
+        }
+
+        // Create new chart with real data
+        revenueExpensesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: revenueData,
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    {
+                        label: 'Expenses',
+                        data: expenseData,
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        callbacks: {
+                            label: function (context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y;
+                                const currency = businessData?.currency || 'R';
+                                return `${label}: ${currency} ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                const currency = businessData?.currency || 'R';
+                                return currency + ' ' + value.toLocaleString();
+                            },
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Remove loading indicator
+        canvas.style.opacity = '1';
+
+        console.log('✓ Revenue vs Expenses chart updated with real data:', {
+            period,
+            dataPoints: labels.length,
+            totalRevenue: revenueData.reduce((a, b) => a + b, 0).toFixed(2),
+            totalExpenses: expenseData.reduce((a, b) => a + b, 0).toFixed(2)
+        });
+
+    } catch (error) {
+        console.error('Error setting up revenue chart:', error);
+        canvas.style.opacity = '1';
+    }
+}
+
+// UPDATED: Get expense breakdown data with real Firebase data
+async function getExpenseBreakdownData(period) {
+    const now = new Date();
+    let start, end;
+
+    if (period === 'month') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (period === 'quarter') {
+        start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (period === 'year') {
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+
+    const breakdown = {};
+
+    // Get expenses from Firebase
+    try {
+        const expensesRef = ref(db, `businesses/${businessId}/finances/expenses`);
+        const expensesSnap = await get(expensesRef);
+
+        if (expensesSnap.exists()) {
+            const allExpenses = expensesSnap.val();
+
+            Object.values(allExpenses).forEach(expense => {
+                const expenseDate = new Date(expense.date);
+                if (expenseDate >= start && expenseDate <= end) {
+                    const type = expense.type === 'custom' ? expense.customName : expense.type;
+                    breakdown[type] = (breakdown[type] || 0) + (expense.amount || 0);
+                }
+            });
+        }
+
+        // Get approved payment requests
+        const requestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
+        const requestsSnap = await get(requestsRef);
+
+        if (requestsSnap.exists()) {
+            const allRequests = requestsSnap.val();
+
+            Object.values(allRequests).forEach(request => {
+                if (request.status === 'approved' && request.authorizedAt) {
+                    const approvalDate = new Date(request.authorizedAt);
+                    if (approvalDate >= start && approvalDate <= end) {
+                        breakdown[request.purpose] = (breakdown[request.purpose] || 0) + (request.amount || 0);
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error getting expense breakdown:', error);
+    }
+
+    const labels = Object.keys(breakdown);
+    const data = Object.values(breakdown);
+    const colors = [
+        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+        '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'
+    ];
+
+    return { labels, data, colors };
+}
+
+// UPDATED: Setup expense breakdown chart with async loading
+async function setupExpenseBreakdownChart() {
+    const canvas = document.getElementById('expenseBreakdownChart');
+    if (!canvas) {
+        console.warn('Expense chart canvas not found');
+        return;
+    }
+
+    try {
+        const ctx = canvas.getContext('2d');
+        const period = document.getElementById('expensePeriod')?.value || 'month';
+
+        // Show loading
+        canvas.style.opacity = '0.5';
+
+        const { labels, data, colors } = await getExpenseBreakdownData(period);
+
+        if (expenseBreakdownChart) {
+            expenseBreakdownChart.destroy();
+        }
+
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js not loaded');
+            canvas.style.opacity = '1';
+            return;
+        }
+
+        expenseBreakdownChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                size: 12
+                            },
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function (context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                const currency = businessData?.currency || 'R';
+                                return `${label}: ${currency} ${value.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        canvas.style.opacity = '1';
+
+        console.log('✓ Expense breakdown chart updated with real data:', {
+            period,
+            categories: labels.length,
+            totalExpenses: data.reduce((a, b) => a + b, 0).toFixed(2)
+        });
+
+    } catch (error) {
+        console.error('Error setting up expense chart:', error);
+        canvas.style.opacity = '1';
+    }
+}// PART 4 - Payment Requests, Expenses, and Helper Functions
+
+// Submit payment request
+async function submitPaymentRequest(requestData) {
+    try {
+        const requestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
+        const newRequestRef = push(requestsRef);
+
+        const request = {
+            amount: requestData.amount,
+            purpose: requestData.purpose,
+            description: requestData.description,
+            notes: requestData.notes || '',
+            branchId: userData.branchId || '',
+            branchName: userData.branchId ? allBranches[userData.branchId]?.branchName : 'N/A',
+            requestedBy: generateCleanId(currentUser.email),
+            requestedByName: userData.displayName,
+            requestedAt: new Date().toISOString(),
+            status: 'pending'
+        };
+
+        await set(newRequestRef, request);
+
+        const transactionRef = ref(db, `businesses/${businessId}/finances/transactions`);
+        const newTransactionRef = push(transactionRef);
+        await set(newTransactionRef, {
+            type: 'expense',
+            amount: request.amount,
+            description: `Payment request: ${request.purpose} - ${request.description}`,
+            branchId: request.branchId,
+            date: new Date().toISOString().split('T')[0],
+            timestamp: new Date().toISOString(),
+            status: 'pending'
+        });
+
+        await loadFinanceData();
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error submitting payment request:', error);
+        throw error;
+    }
+}
+
+// Approve payment request
+window.approvePayment = async function (requestId) {
+    if (!hasPermission('authorize-payment')) {
+        showToast('You do not have permission to authorize payments', 'error');
+        return;
+    }
+
+    try {
+        const requestRef = ref(db, `businesses/${businessId}/finances/paymentRequests/${requestId}`);
+
+        await update(requestRef, {
+            status: 'approved',
+            authorizedBy: generateCleanId(currentUser.email),
+            authorizedByName: userData.displayName,
+            authorizedAt: new Date().toISOString()
+        });
+
+        const request = paymentRequests[requestId];
+        const transactionsRef = ref(db, `businesses/${businessId}/finances/transactions`);
+        const transactionsSnap = await get(transactionsRef);
+
+        if (transactionsSnap.exists()) {
+            Object.entries(transactionsSnap.val()).forEach(async ([txId, tx]) => {
+                if (tx.description.includes(request.description) && tx.status === 'pending') {
+                    await update(ref(db, `businesses/${businessId}/finances/transactions/${txId}`), {
+                        status: 'approved'
+                    });
+                }
+            });
+        }
+
+        showToast('Payment request approved', 'success');
+        await loadFinanceData();
+        await updateDashboardStats();
+        displayPendingRequests();
+        displayRecentTransactions();
+
+    } catch (error) {
+        console.error('Error approving payment:', error);
+        showToast('Failed to approve payment', 'error');
+    }
+};
+
+// Reject payment request
+window.rejectPayment = async function (requestId) {
+    if (!hasPermission('authorize-payment')) {
+        showToast('You do not have permission to authorize payments', 'error');
+        return;
+    }
+
+    const reason = prompt('Enter reason for rejection:');
+    if (!reason) return;
+
+    try {
+        const requestRef = ref(db, `businesses/${businessId}/finances/paymentRequests/${requestId}`);
+
+        await update(requestRef, {
+            status: 'rejected',
+            authorizedBy: generateCleanId(currentUser.email),
+            authorizedByName: userData.displayName,
+            authorizedAt: new Date().toISOString(),
+            rejectionReason: reason
+        });
+
+        const request = paymentRequests[requestId];
+        const transactionsRef = ref(db, `businesses/${businessId}/finances/transactions`);
+        const transactionsSnap = await get(transactionsRef);
+
+        if (transactionsSnap.exists()) {
+            Object.entries(transactionsSnap.val()).forEach(async ([txId, tx]) => {
+                if (tx.description.includes(request.description) && tx.status === 'pending') {
+                    await update(ref(db, `businesses/${businessId}/finances/transactions/${txId}`), {
+                        status: 'rejected'
+                    });
+                }
+            });
+        }
+
+        showToast('Payment request rejected', 'success');
+        await loadFinanceData();
+        await updateDashboardStats();
+        displayPendingRequests();
+        displayRecentTransactions();
+
+    } catch (error) {
+        console.error('Error rejecting payment:', error);
+        showToast('Failed to reject payment', 'error');
+    }
+};
+
+// Record expense
+async function recordExpense(expenseData) {
+    try {
+        const expensesRef = ref(db, `businesses/${businessId}/finances/expenses`);
+        const newExpenseRef = push(expensesRef);
+
+        const expense = {
+            type: expenseData.type,
+            customName: expenseData.type === 'custom' ? expenseData.customName : null,
+            amount: expenseData.amount,
+            date: expenseData.date,
+            description: expenseData.description,
+            branchId: expenseData.branchId,
+            branchName: allBranches[expenseData.branchId]?.branchName || 'Unknown',
+            isRecurring: expenseData.isRecurring,
+            recurringFrequency: expenseData.isRecurring ? expenseData.recurringFrequency : null,
+            recordedBy: generateCleanId(currentUser.email),
+            recordedByName: userData.displayName,
+            recordedAt: new Date().toISOString(),
+            lastModifiedBy: userData.displayName,
+            lastModifiedAt: new Date().toISOString()
+        };
+
+        await set(newExpenseRef, expense);
+
+        const transactionRef = ref(db, `businesses/${businessId}/finances/transactions`);
+        const newTransactionRef = push(transactionRef);
+        await set(newTransactionRef, {
+            type: 'expense',
+            amount: expense.amount,
+            description: `${expense.type === 'custom' ? expense.customName : expense.type}: ${expense.description}`,
+            branchId: expense.branchId,
+            date: expense.date,
+            timestamp: new Date().toISOString(),
+            status: 'completed'
+        });
+
+        await loadFinanceData();
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error recording expense:', error);
+        throw error;
+    }
+}
+
+// Format date helper
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-ZA', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Format time ago helper
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+
+    return date.toLocaleDateString('en-ZA');
+}
+
+// Helper functions
+function setLoading(button, isLoading) {
+    if (!button) return;
+
+    const btnText = button.querySelector('.btn-text');
+    const btnLoader = button.querySelector('.btn-loader');
+
+    if (isLoading) {
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoader) btnLoader.style.display = 'inline-block';
+        button.disabled = true;
+    } else {
+        if (btnText) btnText.style.display = 'inline-block';
+        if (btnLoader) btnLoader.style.display = 'none';
+        button.disabled = false;
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById(type === 'success' ? 'successToast' : 'errorToast');
+    const messageSpan = type === 'success' ?
+        document.getElementById('toastMessage') :
+        document.getElementById('errorToastMessage');
+
+    if (toast && messageSpan) {
+        messageSpan.textContent = message;
+        toast.style.display = 'flex';
+
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    } else {
+        // Fallback to console if toast elements don't exist
+        console.log(`[${type.toUpperCase()}]: ${message}`);
+    }
+}
+// PART 5 - EVENT LISTENERS (WITH UPDATED CHART HANDLERS)
+
+console.log('=== Attaching Event Listeners ===');
+
+const menuToggle = document.getElementById('menuToggle');
+if (menuToggle) {
+    menuToggle.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.toggle('active');
+    });
+    console.log('✓ Menu toggle attached');
+}
+
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to logout?')) {
+            try {
+                await signOut(auth);
+                window.location.href = '../Index.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Failed to logout', 'error');
+            }
+        }
+    });
+    console.log('✓ Logout button attached');
+}
+
+// UPDATED: Refresh button to reload charts with async
+const refreshBtn = document.getElementById('refreshBtn');
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+        console.log('Refreshing all data and charts...');
+        try {
+            // Show loading state
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+
+            // Reload all data
+            await loadFinanceData();
+            await updateDashboardStats();
+            displayPendingRequests();
+            displayRecentTransactions();
+
+            // Reload charts with real data
+            await setupCharts();
+
+            showToast('Data refreshed successfully', 'success');
+        } catch (error) {
+            console.error('Refresh error:', error);
+            showToast('Failed to refresh data', 'error');
+        } finally {
+            // Restore button
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+        }
+    });
+    console.log('✓ Refresh button attached (with chart reload)');
+}
+
+const requestPaymentBtn = document.getElementById('requestPaymentBtn');
+if (requestPaymentBtn) {
+    requestPaymentBtn.addEventListener('click', () => {
+        const modal = document.getElementById('requestPaymentModal');
+        if (modal) modal.classList.add('active');
+    });
+    console.log('✓ Request payment button attached');
+}
+
+const requestPaymentForm = document.getElementById('requestPaymentForm');
+if (requestPaymentForm) {
+    requestPaymentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const requestData = {
+            amount: parseFloat(document.getElementById('requestAmount').value),
+            purpose: document.getElementById('requestPurpose').value,
+            description: document.getElementById('requestDescription').value.trim(),
+            notes: document.getElementById('requestNotes').value.trim()
+        };
+
+        const btn = document.getElementById('submitRequestPayment');
+        setLoading(btn, true);
+
+        try {
+            await submitPaymentRequest(requestData);
+            showToast('Payment request submitted successfully', 'success');
+
+            const modal = document.getElementById('requestPaymentModal');
+            if (modal) modal.classList.remove('active');
+            requestPaymentForm.reset();
+
+            await updateDashboardStats();
+            displayPendingRequests();
+            displayRecentTransactions();
+
+        } catch (error) {
+            console.error('Error submitting request:', error);
+            showToast('Failed to submit payment request', 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    });
+    console.log('✓ Request payment form attached');
+}
+
+const recordExpenseBtn = document.getElementById('recordExpenseBtn');
+if (recordExpenseBtn) {
+    recordExpenseBtn.addEventListener('click', () => {
+        const modal = document.getElementById('recordExpenseModal');
+        const dateInput = document.getElementById('expenseDate');
+        if (modal) modal.classList.add('active');
+        if (dateInput) dateInput.valueAsDate = new Date();
+    });
+    console.log('✓ Record expense button attached');
+}
+
+const expenseType = document.getElementById('expenseType');
+if (expenseType) {
+    expenseType.addEventListener('change', (e) => {
+        const customGroup = document.getElementById('customExpenseGroup');
+        if (customGroup) {
+            customGroup.style.display = e.target.value === 'custom' ? 'block' : 'none';
+        }
+    });
+}
+
+const expenseRecurring = document.getElementById('expenseRecurring');
+if (expenseRecurring) {
+    expenseRecurring.addEventListener('change', (e) => {
+        const recurringOptions = document.getElementById('recurringOptions');
+        if (recurringOptions) {
+            recurringOptions.style.display = e.target.checked ? 'block' : 'none';
+        }
+    });
+}
+
+const recordExpenseForm = document.getElementById('recordExpenseForm');
+if (recordExpenseForm) {
+    recordExpenseForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const expenseData = {
+            type: document.getElementById('expenseType').value,
+            customName: document.getElementById('customExpenseName')?.value.trim() || '',
+            amount: parseFloat(document.getElementById('expenseAmount').value),
+            date: document.getElementById('expenseDate').value,
+            description: document.getElementById('expenseDescription').value.trim(),
+            branchId: document.getElementById('expenseBranch').value,
+            isRecurring: document.getElementById('expenseRecurring').checked,
+            recurringFrequency: document.getElementById('recurringFrequency')?.value || null
+        };
+
+        if (expenseData.type === 'custom' && !expenseData.customName) {
+            showToast('Please enter custom expense name', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('submitRecordExpense');
+        setLoading(btn, true);
+
+        try {
+            await recordExpense(expenseData);
+            showToast('Expense recorded successfully', 'success');
+
+            const modal = document.getElementById('recordExpenseModal');
+            if (modal) modal.classList.remove('active');
+            recordExpenseForm.reset();
+
+            await updateDashboardStats();
+            displayRecentTransactions();
+            await setupCharts(); // Reload charts after expense recorded
+
+        } catch (error) {
+            console.error('Error recording expense:', error);
+            showToast('Failed to record expense', 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    });
+    console.log('✓ Record expense form attached');
+}
+
+const viewPaymentsBtn = document.getElementById('viewPaymentsBtn');
+if (viewPaymentsBtn) {
+    viewPaymentsBtn.addEventListener('click', () => {
+        displayAllPayments();
+        const modal = document.getElementById('viewPaymentsModal');
+        if (modal) modal.classList.add('active');
+    });
+}
+
+function displayAllPayments() {
+    const tbody = document.getElementById('allPaymentsBody');
+    if (!tbody) return;
+
+    const currency = businessData?.currency || 'R';
+
+    const allPayments = Object.entries(paymentRequests)
+        .sort((a, b) => new Date(b[1].requestedAt) - new Date(a[1].requestedAt));
+
+    if (allPayments.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <i class="fas fa-list-alt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    No payment requests found
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = allPayments.map(([requestId, request]) => {
+        const statusClass = request.status === 'approved' ? 'approved' :
+            request.status === 'rejected' ? 'rejected' : 'pending';
+        const statusIcon = request.status === 'approved' ? 'fa-check-circle' :
+            request.status === 'rejected' ? 'fa-times-circle' : 'fa-clock';
+
+        return `
+            <tr>
+                <td>${formatDate(request.requestedAt)}</td>
+                <td>${request.requestedByName}</td>
+                <td><strong>${currency} ${request.amount.toFixed(2)}</strong></td>
+                <td><span class="badge ${request.purpose}">${request.purpose.toUpperCase()}</span></td>
+                <td>${request.description}</td>
+                <td><span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${request.status.toUpperCase()}</span></td>
+                <td>${request.authorizedByName || '-'}</td>
+                <td>
+                    ${request.status === 'pending' && hasPermission('authorize-payment') ? `
+                        <div class="action-buttons">
+                            <button class="btn-approve" onclick="approvePayment('${requestId}')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn-reject" onclick="rejectPayment('${requestId}')">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </div>
+                    ` : `<span style="color: var(--gray-500);">-</span>`}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+const viewExpensesBtn = document.getElementById('viewExpensesBtn');
+if (viewExpensesBtn) {
+    viewExpensesBtn.addEventListener('click', () => {
+        displayAllExpenses();
+        updateExpenseSummary();
+        const modal = document.getElementById('viewExpensesModal');
+        if (modal) modal.classList.add('active');
+    });
+}
+
+function displayAllExpenses() {
+    const tbody = document.getElementById('allExpensesBody');
+    if (!tbody) return;
+
+    const currency = businessData?.currency || 'R';
+
+    const allExpenses = Object.entries(expenses)
+        .sort((a, b) => new Date(b[1].date) - new Date(a[1].date));
+
+    if (allExpenses.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <i class="fas fa-file-invoice-dollar" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    No expenses recorded
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = allExpenses.map(([expenseId, expense]) => `
+        <tr>
+            <td>${formatDate(expense.date)}</td>
+            <td><span class="badge ${expense.type}">${expense.type === 'custom' ? expense.customName : expense.type.toUpperCase()}</span></td>
+            <td><strong>${currency} ${expense.amount.toFixed(2)}</strong></td>
+            <td>${expense.description}</td>
+            <td>${expense.branchName}</td>
+            <td>${expense.isRecurring ? `<span class="status-badge success"><i class="fas fa-sync"></i> ${expense.recurringFrequency}</span>` : '-'}</td>
+            <td>${expense.recordedByName}</td>
+            <td>-</td>
+        </tr>
+    `).join('');
+}
+
+function updateExpenseSummary() {
+    const currency = businessData?.currency || 'R';
+
+    let totalExpenses = 0;
+    let recurringExpenses = 0;
+    let oneTimeExpenses = 0;
+
+    Object.values(expenses).forEach(expense => {
+        totalExpenses += expense.amount || 0;
+        if (expense.isRecurring) {
+            recurringExpenses += expense.amount || 0;
+        } else {
+            oneTimeExpenses += expense.amount || 0;
+        }
+    });
+
+    const summaryTotalExpensesEl = document.getElementById('summaryTotalExpenses');
+    const summaryRecurringExpensesEl = document.getElementById('summaryRecurringExpenses');
+    const summaryOneTimeExpensesEl = document.getElementById('summaryOneTimeExpenses');
+
+    if (summaryTotalExpensesEl) {
+        summaryTotalExpensesEl.textContent = `${currency} ${totalExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    }
+    if (summaryRecurringExpensesEl) {
+        summaryRecurringExpensesEl.textContent = `${currency} ${recurringExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    }
+    if (summaryOneTimeExpensesEl) {
+        summaryOneTimeExpensesEl.textContent = `${currency} ${oneTimeExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
+    }
+}
+
+// UPDATED: Chart period change with async support
+const chartPeriod = document.getElementById('chartPeriod');
+if (chartPeriod) {
+    chartPeriod.addEventListener('change', async () => {
+        console.log('Chart period changed to:', chartPeriod.value);
+        try {
+            await setupRevenueExpensesChart();
+            showToast('Chart updated', 'success');
+        } catch (error) {
+            console.error('Error updating chart:', error);
+            showToast('Failed to update chart', 'error');
+        }
+    });
+    console.log('✓ Chart period selector attached (async)');
+}
+
+// UPDATED: Expense period change with async support
+const expensePeriod = document.getElementById('expensePeriod');
+if (expensePeriod) {
+    expensePeriod.addEventListener('change', async () => {
+        console.log('Expense period changed to:', expensePeriod.value);
+        try {
+            await setupExpenseBreakdownChart();
+            showToast('Expense chart updated', 'success');
+        } catch (error) {
+            console.error('Error updating expense chart:', error);
+            showToast('Failed to update expense chart', 'error');
+        }
+    });
+    console.log('✓ Expense period selector attached (async)');
+}
+
+// Close modals
+document.querySelectorAll('[id^="close"], [id^="cancel"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const modal = btn.closest('.modal');
+        if (modal) modal.classList.remove('active');
+    });
+});
+
+console.log('=== ✓ All Event Listeners Attached ===');
+console.log('BongoBoss POS - Finance Management Script Fully Loaded ✓');

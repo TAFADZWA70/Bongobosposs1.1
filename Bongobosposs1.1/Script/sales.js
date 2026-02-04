@@ -265,10 +265,23 @@ export function searchSales(searchTerm) {
 }
 
 // Get sale details by ID
+// In Sales.js, update the getSaleById function:
 export function getSaleById(saleId) {
-    return allSales[saleId] ? { saleId, ...allSales[saleId] } : null;
-}
+    if (!allSales || !saleId) return null;
 
+    // Check if the saleId exists directly
+    if (allSales[saleId]) {
+        return { saleId, ...allSales[saleId] };
+    }
+
+    // If not found, search through all sales (in case saleId format is different)
+    const foundSale = Object.entries(allSales).find(([id, _]) => id === saleId);
+    if (foundSale) {
+        return { saleId: foundSale[0], ...foundSale[1] };
+    }
+
+    return null;
+}
 // Format currency
 export function formatCurrency(amount) {
     const currency = businessData?.currency || 'R';

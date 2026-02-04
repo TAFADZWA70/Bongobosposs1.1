@@ -320,97 +320,157 @@
             </div>
         </div>
     </main>
-    <!-- View Sales Modal -->
+
+    <!-- View Sales Modal (MAIN ONE - KEEP THIS) -->
     <div class="modal" id="viewSalesModal">
         <div class="modal-content large">
             <div class="modal-header">
-                <h2>Sales History</h2>
+                <h2><i class="fas fa-receipt"></i> Daily Sales Report</h2>
                 <button class="close-btn" id="closeViewSalesModal">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <!-- Filters -->
-                <div class="filters-section">
-                    <select id="salesPeriodFilter">
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="month" selected>This Month</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
-                    <select id="salesBranchFilter">
-                        <option value="all">All Branches</option>
-                    </select>
-                    <select id="salesPaymentFilter">
-                        <option value="all">All Payment Methods</option>
-                        <option value="cash">Cash</option>
-                        <option value="card">Card</option>
-                        <option value="ewallet">E-Wallet</option>
-                    </select>
+                <!-- Period and Branch Filter -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: end;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="salesPeriodFilter">Period</label>
+                        <select id="salesPeriodFilter" class="form-control">
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="week">This Week</option>
+                            <option value="last-week">Last Week</option>
+                            <option value="2-weeks">Last 2 Weeks</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="last-month">Last Month</option>
+                            <option value="custom">Custom Date</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="salesBranchFilter">Branch</label>
+                        <select id="salesBranchFilter" class="form-control">
+                            <option value="all">All Branches</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div id="customSalesDateRange" style="display: none; margin-top: 1rem;">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Start Date</label>
-                            <input type="date" id="salesStartDate">
+                <!-- Custom Date Picker (hidden by default) -->
+                <div id="customDatePicker" style="display: none; margin-bottom: 1.5rem;">
+                    <div style="display: flex; gap: 1rem; align-items: end;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="salesViewDate">Select Date</label>
+                            <input type="date" id="salesViewDate" class="form-control">
                         </div>
-                        <div class="form-group">
-                            <label>End Date</label>
-                            <input type="date" id="salesEndDate">
-                        </div>
-                        <button class="btn-primary" id="applySalesFilter">
-                            <i class="fas fa-filter"></i> Apply Filter
+                        <button class="btn-primary" id="applyCustomDate" style="height: fit-content; padding: 0.75rem 1.5rem;">
+                            <i class="fas fa-check"></i> Apply
                         </button>
                     </div>
                 </div>
 
-                <!-- Summary Cards -->
-                <div class="expense-summary" style="margin-top: 1.5rem;">
-                    <div class="summary-card">
-                        <div class="summary-label">Total Sales</div>
-                        <div class="summary-value" id="summaryTotalSales">R 0.00</div>
+                <!-- Sales Summary Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Sales</div>
+                        <div style="font-size: 2rem; font-weight: 700;" id="salesTotalSales">0</div>
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">transactions</div>
                     </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Total Transactions</div>
-                        <div class="summary-value" id="summaryTotalTransactions">0</div>
+
+                    <div style="background: linear-gradient(135deg, var(--secondary-color), var(--success-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Revenue</div>
+                        <div style="font-size: 2rem; font-weight: 700;" id="salesTotalRevenue">R 0.00</div>
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">gross sales</div>
                     </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Average Transaction</div>
-                        <div class="summary-value" id="summaryAvgTransaction">R 0.00</div>
+
+                    <div style="background: linear-gradient(135deg, var(--danger-color), var(--warning-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Change Given</div>
+                        <div style="font-size: 2rem; font-weight: 700;" id="salesChangeGiven">R 0.00</div>
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">to customers</div>
                     </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Total Tax Collected</div>
-                        <div class="summary-value" id="summaryTotalTax">R 0.00</div>
+
+                    <div style="background: linear-gradient(135deg, var(--accent-color), var(--primary-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Avg Transaction</div>
+                        <div style="font-size: 2rem; font-weight: 700;" id="salesAvgTransaction">R 0.00</div>
+                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">per sale</div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Breakdown -->
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--dark-text);">
+                        <i class="fas fa-credit-card"></i> Payment Methods
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--success-color);">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i class="fas fa-money-bill-wave" style="color: var(--success-color);"></i>
+                                <strong>Cash</strong>
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);" id="salesCashTotal">R 0.00</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesCashCount">0 sales</div>
+                        </div>
+
+                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i class="fas fa-credit-card" style="color: var(--primary-color);"></i>
+                                <strong>Card</strong>
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="salesCardTotal">R 0.00</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesCardCount">0 sales</div>
+                        </div>
+
+                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--accent-color);">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <i class="fas fa-mobile-alt" style="color: var(--accent-color);"></i>
+                                <strong>E-Wallet</strong>
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-color);" id="salesEwalletTotal">R 0.00</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesEwalletCount">0 sales</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peak Hours -->
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; color: var(--dark-text);">
+                        <i class="fas fa-clock"></i> Peak Sales Hours
+                    </h3>
+                    <div id="peakHoursList" style="display: grid; gap: 0.75rem;">
+                        <p style="color: #94a3b8;">No peak hours data</p>
                     </div>
                 </div>
 
                 <!-- Sales Table -->
-                <div class="table-responsive" style="margin-top: 1.5rem;">
-                    <table class="finance-table">
-                        <thead>
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Receipt #</th>
-                                <th>Items</th>
-                                <th>Subtotal</th>
-                                <th>Tax</th>
-                                <th>Total</th>
-                                <th>Payment</th>
-                                <th>Branch</th>
-                                <th>Sold By</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="salesHistoryBody"></tbody>
-                    </table>
-                </div>
+                <div style="background: white; border-radius: 10px; overflow: hidden;">
+                    <div style="background: var(--primary-color); color: white; padding: 1rem;">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-list"></i> Sales Transactions
+                        </h3>
+                    </div>
 
-                <!-- Export Button -->
-                <div style="margin-top: 1.5rem; text-align: right;">
-                    <button class="btn-secondary" id="exportSalesCSV">
-                        <i class="fas fa-file-csv"></i> Export to CSV
-                    </button>
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="finance-table">
+                            <thead style="position: sticky; top: 0; background: var(--gray-100); z-index: 10;">
+                                <tr>
+                                    <th>Receipt #</th>
+                                    <th>Date & Time</th>
+                                    <th>Branch</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Payment</th>
+                                    <th>Change</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                        <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                        No sales found
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -704,137 +764,7 @@
             </div>
         </div>
     </div>
-    <div class="modal" id="viewSalesModal">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2><i class="fas fa-receipt"></i> Daily Sales Report</h2>
-                <button class="close-btn" id="closeViewSalesModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Date and Branch Filter -->
-                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: end;">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="salesViewDate">Select Date</label>
-                        <input type="date" id="salesViewDate" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label for="salesBranchFilter">Branch</label>
-                        <select id="salesBranchFilter" class="form-control">
-                            <option value="all">All Branches</option>
-                        </select>
-                    </div>
-                </div>
 
-                <!-- Sales Summary Cards -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-                    <div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Sales</div>
-                        <div style="font-size: 2rem; font-weight: 700;" id="salesTotalSales">0</div>
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">transactions</div>
-                    </div>
-
-                    <div style="background: linear-gradient(135deg, var(--secondary-color), var(--success-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Total Revenue</div>
-                        <div style="font-size: 2rem; font-weight: 700;" id="salesTotalRevenue">R 0.00</div>
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">gross sales</div>
-                    </div>
-
-                    <div style="background: linear-gradient(135deg, var(--danger-color), var(--warning-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Change Given</div>
-                        <div style="font-size: 2rem; font-weight: 700;" id="salesChangeGiven">R 0.00</div>
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">to customers</div>
-                    </div>
-
-                    <div style="background: linear-gradient(135deg, var(--accent-color), var(--primary-color)); color: white; padding: 1.5rem; border-radius: 10px; box-shadow: var(--shadow-md);">
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Avg Transaction</div>
-                        <div style="font-size: 2rem; font-weight: 700;" id="salesAvgTransaction">R 0.00</div>
-                        <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem;">per sale</div>
-                    </div>
-                </div>
-
-                <!-- Payment Method Breakdown -->
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
-                    <h3 style="margin: 0 0 1rem 0; color: var(--dark-text);">
-                        <i class="fas fa-credit-card"></i> Payment Methods
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--success-color);">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-money-bill-wave" style="color: var(--success-color);"></i>
-                                <strong>Cash</strong>
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);" id="salesCashTotal">R 0.00</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesCashCount">0 sales</div>
-                        </div>
-
-                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--primary-color);">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-credit-card" style="color: var(--primary-color);"></i>
-                                <strong>Card</strong>
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);" id="salesCardTotal">R 0.00</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesCardCount">0 sales</div>
-                        </div>
-
-                        <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--accent-color);">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <i class="fas fa-mobile-alt" style="color: var(--accent-color);"></i>
-                                <strong>E-Wallet</strong>
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-color);" id="salesEwalletTotal">R 0.00</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);" id="salesEwalletCount">0 sales</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Peak Hours -->
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;">
-                    <h3 style="margin: 0 0 1rem 0; color: var(--dark-text);">
-                        <i class="fas fa-clock"></i> Peak Sales Hours
-                    </h3>
-                    <div id="peakHoursList" style="display: grid; gap: 0.75rem;">
-                        <p style="color: #94a3b8;">No peak hours data</p>
-                    </div>
-                </div>
-
-                <!-- Sales Table -->
-                <div style="background: white; border-radius: 10px; overflow: hidden;">
-                    <div style="background: var(--primary-color); color: white; padding: 1rem;">
-                        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-list"></i> Sales Transactions
-                        </h3>
-                    </div>
-
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="finance-table">
-                            <thead style="position: sticky; top: 0; background: var(--gray-100); z-index: 10;">
-                                <tr>
-                                    <th>Receipt #</th>
-                                    <th>Date & Time</th>
-                                    <th>Branch</th>
-                                    <th>Items</th>
-                                    <th>Total</th>
-                                    <th>Payment</th>
-                                    <th>Change</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="salesTableBody">
-                                <tr>
-                                    <td colspan="8" style="text-align: center; padding: 2rem; color: #94a3b8;">
-                                        <i class="fas fa-receipt" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                                        No sales found
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     <!-- Financial Report Modal -->
     <div class="modal" id="financialReportModal">
         <div class="modal-content large">
@@ -853,6 +783,13 @@
                             <option value="quarter">This Quarter</option>
                             <option value="year">This Year</option>
                             <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Branch</label>
+                        <select id="reportBranchFilter">
+                            <option value="all">All Branches</option>
                         </select>
                     </div>
 
@@ -893,6 +830,10 @@
     </div>
 
     <script type="module" src="../Script/finance.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="../Script/sales.js"></script>
+    <script type="module" src="../Script/salesperiod.js"></script>
+    <script type="module" src="../Script/chart fix.js"></script>
+    <script type="module" src="../Script/chart event listeners.js"></script>
 </body>
 </html>

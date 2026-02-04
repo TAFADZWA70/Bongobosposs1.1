@@ -115,7 +115,9 @@
     <Content Include="Script\ChangeManagement.js" />
     <Content Include="Script\ChangeManagementUI.js" />
     <Content Include="Script\employeedashboard.js" />
+    <Content Include="Script\chart event listeners.js" />
     <Content Include="Script\finance.js" />
+    <Content Include="Script\chart fix.js" />
     <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />
     <Content Include="Script\inventory.js" />
@@ -124,7 +126,9 @@
     <Content Include="Script\Login.js" />
     <Content Include="Script\owanerdashboard.js" />
     <Content Include="Script\Register.js" />
+    <Content Include="Script\revemue.js" />
     <Content Include="Script\sales.js" />
+    <Content Include="Script\salesperiod.js" />
     <Content Include="Script\stockfollowup.js" />
     <Content Include="Script\stocktaking-page.js" />
     <Content Include="Script\stocktaking.js" />
