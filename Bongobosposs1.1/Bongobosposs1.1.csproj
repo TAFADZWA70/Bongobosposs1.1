@@ -86,6 +86,7 @@
     <Content Include="Dashboard\AddBranch.html" />
     <Content Include="Dashboard\AddUsers.html" />
     <Content Include="Dashboard\DashboardAdmin.html" />
+    <Content Include="Owner Pages\AssetManagement.html" />
     <Content Include="Owner Pages\ChangeManagement.html" />
     <Content Include="Employee Pages\DashboardEmployee.html" />
     <Content Include="Dashboard\DashboardOwner.html" />
@@ -114,10 +115,11 @@
     <Content Include="Script\business-setup.js" />
     <Content Include="Script\ChangeManagement.js" />
     <Content Include="Script\ChangeManagementUI.js" />
+    <Content Include="Script\download.js" />
     <Content Include="Script\employeedashboard.js" />
     <Content Include="Script\chart event listeners.js" />
     <Content Include="Script\finance.js" />
-    <Content Include="Script\chart fix.js" />
+    <Content Include="Script\finance-charts.js" />
     <Content Include="Script\forgotpassword.js" />
     <Content Include="Script\Index.js" />
     <Content Include="Script\inventory.js" />

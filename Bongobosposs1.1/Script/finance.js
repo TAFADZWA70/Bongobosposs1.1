@@ -10,6 +10,7 @@ import {
     getChangeSummary,
     getDailyRecordsData
 } from './ChangeManagement.js';
+
 import {
     initSalesModule,
     loadAllSales,
@@ -24,6 +25,25 @@ import {
     generateSalesReport,
     getSaleById
 } from './Sales.js';
+
+// *** CRITICAL FIX: Import chart functions ***
+import {
+    initializeCharts,
+    setupAllCharts,
+    updateChartsData,
+    refreshAllCharts,
+    refreshRevenueChart,
+    refreshExpenseChart
+} from './finance-charts.js';
+
+// *** NEW: Import download module functions ***
+import {
+    downloadFinancialReportPDF,
+    downloadFinancialReportCSV,
+    downloadSalesCSV,
+    downloadExpensesCSV,
+    downloadPaymentRequestsCSV
+} from './download.js';
 
 console.log('=== Finance.js Script Loaded ===');
 
@@ -52,8 +72,12 @@ let allBranches = {};
 let paymentRequests = {};
 let expenses = {};
 let transactions = [];
-let revenueExpensesChart = null;
-let expenseBreakdownChart = null;
+
+// *** NEW: Store latest report data for downloads ***
+let latestReportData = null;
+let latestReportStartDate = null;
+let latestReportEndDate = null;
+let latestReportBranchFilter = null;
 
 // Emergency timeout - force hide loading screen after 15 seconds
 setTimeout(() => {
@@ -64,9 +88,7 @@ setTimeout(() => {
         loadingScreen.style.display = 'none';
         showToast('Page loaded with potential errors. Check console for details.', 'error');
     }
-}, 15000);
-
-// Generate clean ID from email
+}, 15000);// Generate clean ID from email
 function generateCleanId(email) {
     const username = email.split('@')[0];
     return username.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -109,9 +131,7 @@ onAuthStateChanged(auth, async (user) => {
         console.error('=== loadUserData Failed ===', error);
         document.getElementById('loadingScreen')?.classList.add('hidden');
     }
-});
-
-// Load user data - WITH COMPREHENSIVE ERROR HANDLING
+});// Load user data - WITH COMPREHENSIVE ERROR HANDLING
 async function loadUserData() {
     try {
         console.log('Step 1: Getting user data from Firebase');
@@ -181,7 +201,6 @@ async function loadUserData() {
             console.log('✓ Sales module initialized successfully');
         } catch (error) {
             console.warn('⚠️ Sales module initialization failed (non-critical):', error);
-            // Continue anyway - don't block the page
         }
 
         // Initialize change management with try-catch
@@ -197,7 +216,6 @@ async function loadUserData() {
             console.log('✓ Change management initialized successfully');
         } catch (error) {
             console.warn('⚠️ Change management initialization failed (non-critical):', error);
-            // Continue anyway
         }
 
         console.log('Step 8: Loading finance data');
@@ -213,12 +231,29 @@ async function loadUserData() {
         displayRecentTransactions();
         console.log('✓ Data displayed');
 
+        // *** CRITICAL FIX: Initialize charts module BEFORE setup ***
+        console.log('Step 11: Initializing charts module');
+        try {
+            initializeCharts(
+                db,
+                businessId,
+                businessData,
+                allBranches,
+                expenses,
+                paymentRequests,
+                transactions
+            );
+            console.log('✓ Charts module initialized');
+        } catch (error) {
+            console.error('⚠️ Charts module initialization failed:', error);
+        }
+
         // Setup charts with delay to ensure DOM is ready
-        console.log('Step 11: Setting up charts');
+        console.log('Step 12: Setting up charts');
         setTimeout(() => {
             if (typeof Chart !== 'undefined') {
                 try {
-                    setupCharts();
+                    setupAllCharts();
                     console.log('✓ Charts setup complete');
                 } catch (error) {
                     console.error('⚠️ Chart setup failed:', error);
@@ -232,11 +267,11 @@ async function loadUserData() {
         console.log('✓ UI permissions configured');
 
         // CRITICAL: Hide loading screen
-        console.log('Step 12: HIDING LOADING SCREEN');
+        console.log('Step 13: HIDING LOADING SCREEN');
         const loadingScreen = document.getElementById('loadingScreen');
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
-            loadingScreen.style.display = 'none'; // Extra safety
+            loadingScreen.style.display = 'none';
         }
         console.log('=== ✓✓✓ PAGE LOAD COMPLETE ✓✓✓ ===');
 
@@ -301,7 +336,6 @@ async function loadBusinessInfo() {
         }
     } catch (error) {
         console.error('Error loading business info:', error);
-        // Don't throw - allow page to continue loading
     }
 }
 
@@ -341,15 +375,13 @@ async function loadBranches() {
     } catch (error) {
         console.error('Error loading branches:', error);
         allBranches = {};
-        // Don't throw - allow page to continue
     }
 }
 
-// Load all finance data - WITH INDIVIDUAL TRY-CATCH FOR EACH DATA SOURCE
+// Load all finance data
 async function loadFinanceData() {
     console.log('Loading finance data...');
 
-    // Load payment requests
     try {
         const requestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
         const requestsSnap = await get(requestsRef);
@@ -360,7 +392,6 @@ async function loadFinanceData() {
         paymentRequests = {};
     }
 
-    // Load expenses
     try {
         const expensesRef = ref(db, `businesses/${businessId}/finances/expenses`);
         const expensesSnap = await get(expensesRef);
@@ -371,7 +402,6 @@ async function loadFinanceData() {
         expenses = {};
     }
 
-    // Load transactions
     try {
         const transactionsRef = ref(db, `businesses/${businessId}/finances/transactions`);
         const transactionsSnap = await get(transactionsRef);
@@ -388,10 +418,16 @@ async function loadFinanceData() {
         transactions = [];
     }
 
-    console.log('✓ All finance data loaded successfully');
-}
+    // *** CRITICAL FIX: Update charts data after loading ***
+    try {
+        updateChartsData(expenses, paymentRequests, transactions);
+        console.log('✓ Charts data updated');
+    } catch (error) {
+        console.warn('⚠️ Could not update charts data:', error);
+    }
 
-// Update dashboard statistics - WITH ENHANCED ERROR HANDLING
+    console.log('✓ All finance data loaded successfully');
+}// Update dashboard statistics with COGS calculation
 async function updateDashboardStats() {
     try {
         console.log('Updating dashboard stats...');
@@ -412,7 +448,6 @@ async function updateDashboardStats() {
         let coinsAmount = 0;
         let notesAmount = 0;
 
-        // Sum up today's starting change
         if (changeRecords && typeof changeRecords === 'object') {
             Object.values(changeRecords).forEach(record => {
                 if (record.date === today && record.status === 'active') {
@@ -468,7 +503,7 @@ async function updateDashboardStats() {
             });
         }
 
-        // DYNAMIC CASH ON HAND = Starting + Received - Change - Expenses
+        // DYNAMIC CASH ON HAND
         const actualCashOnHand = initialCashOnHand + totalCashReceived - totalChangeGivenOut - expensesPaidOut;
 
         const cashOnHandEl = document.getElementById('cashOnHand');
@@ -488,11 +523,12 @@ async function updateDashboardStats() {
             `;
         }
 
-        // Calculate monthly revenue from POS sales
+        // MONTHLY REVENUE & COGS
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         let monthlyRevenue = 0;
+        let monthlyCOGS = 0;
 
         if (salesSnap && salesSnap.exists()) {
             const allSales = salesSnap.val();
@@ -500,11 +536,18 @@ async function updateDashboardStats() {
                 const saleDate = new Date(sale.soldAt || sale.date);
                 if (saleDate >= startOfMonth) {
                     monthlyRevenue += sale.total || 0;
+
+                    if (sale.items && Array.isArray(sale.items)) {
+                        sale.items.forEach(item => {
+                            const costPrice = item.costPrice || 0;
+                            const quantity = item.quantity || 0;
+                            monthlyCOGS += costPrice * quantity;
+                        });
+                    }
                 }
             });
         }
 
-        // Add manual revenue transactions
         if (transactions && Array.isArray(transactions)) {
             transactions.forEach(transaction => {
                 if (transaction.type === 'revenue' && new Date(transaction.timestamp) >= startOfMonth) {
@@ -512,6 +555,8 @@ async function updateDashboardStats() {
                 }
             });
         }
+
+        const grossProfit = monthlyRevenue - monthlyCOGS;
 
         const totalRevenueEl = document.getElementById('totalRevenue');
         const revenueChangeEl = document.getElementById('revenueChange');
@@ -546,7 +591,7 @@ async function updateDashboardStats() {
             revenueChangeEl.className = revenueChange >= 0 ? 'stat-change positive' : 'stat-change negative';
         }
 
-        // Calculate monthly expenses
+        // MONTHLY OPERATING EXPENSES
         let monthlyExpenses = 0;
 
         if (expenses && typeof expenses === 'object') {
@@ -608,8 +653,8 @@ async function updateDashboardStats() {
             expensesChangeEl.className = expensesChange >= 0 ? 'stat-change negative' : 'stat-change positive';
         }
 
-        // Calculate net profit
-        const netProfit = monthlyRevenue - monthlyExpenses;
+        // NET PROFIT CALCULATION
+        const netProfit = monthlyRevenue - monthlyCOGS - monthlyExpenses;
         const profitMargin = monthlyRevenue > 0 ? ((netProfit / monthlyRevenue) * 100).toFixed(2) : 0;
 
         const netProfitEl = document.getElementById('netProfit');
@@ -628,17 +673,16 @@ async function updateDashboardStats() {
         console.log('✓ Dashboard stats updated:', {
             actualCashOnHand,
             monthlyRevenue,
+            monthlyCOGS,
+            grossProfit,
             monthlyExpenses,
             netProfit
         });
 
     } catch (error) {
         console.error('Error updating dashboard stats:', error);
-        // Don't throw - allow page to continue
     }
-}// PART 2 - Display Functions, Charts, and Event Handlers
-
-// Display pending payment requests
+}// Display pending payment requests
 function displayPendingRequests() {
     const tbody = document.getElementById('pendingRequestsBody');
     if (!tbody) return;
@@ -736,296 +780,6 @@ function displayRecentTransactions() {
     }).join('');
 }
 
-// Setup charts
-function setupCharts() {
-    try {
-        setupRevenueExpensesChart();
-        setupExpenseBreakdownChart();
-    } catch (error) {
-        console.error('Error in setupCharts:', error);
-    }
-}
-
-// Setup revenue vs expenses chart
-function setupRevenueExpensesChart() {
-    const canvas = document.getElementById('revenueExpensesChart');
-    if (!canvas) {
-        console.warn('Revenue chart canvas not found');
-        return;
-    }
-
-    try {
-        const ctx = canvas.getContext('2d');
-        const period = document.getElementById('chartPeriod')?.value || 'month';
-        const { labels, revenueData, expenseData } = getChartData(period);
-
-        if (revenueExpensesChart) {
-            revenueExpensesChart.destroy();
-        }
-
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js not loaded');
-            return;
-        }
-
-        revenueExpensesChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Revenue',
-                        data: revenueData,
-                        borderColor: 'rgb(16, 185, 129)',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    },
-                    {
-                        label: 'Expenses',
-                        data: expenseData,
-                        borderColor: 'rgb(239, 68, 68)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function (value) {
-                                return 'R ' + value.toLocaleString();
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Error setting up revenue chart:', error);
-    }
-}
-
-// Setup expense breakdown chart
-function setupExpenseBreakdownChart() {
-    const canvas = document.getElementById('expenseBreakdownChart');
-    if (!canvas) {
-        console.warn('Expense chart canvas not found');
-        return;
-    }
-
-    try {
-        const ctx = canvas.getContext('2d');
-        const period = document.getElementById('expensePeriod')?.value || 'month';
-        const { labels, data, colors } = getExpenseBreakdownData(period);
-
-        if (expenseBreakdownChart) {
-            expenseBreakdownChart.destroy();
-        }
-
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js not loaded');
-            return;
-        }
-
-        expenseBreakdownChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: colors,
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                const label = context.label || '';
-                                const value = context.parsed;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / total) * 100).toFixed(1);
-                                return `${label}: R ${value.toFixed(2)} (${percentage}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Error setting up expense chart:', error);
-    }
-}
-
-// Get chart data based on period
-function getChartData(period) {
-    const now = new Date();
-    let labels = [];
-    let revenueData = [];
-    let expenseData = [];
-
-    if (period === 'week') {
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            labels.push(date.toLocaleDateString('en-ZA', { weekday: 'short' }));
-
-            const dayStart = new Date(date).setHours(0, 0, 0, 0);
-            const dayEnd = new Date(date).setHours(23, 59, 59, 999);
-
-            revenueData.push(calculateRevenueForPeriod(dayStart, dayEnd));
-            expenseData.push(calculateExpensesForPeriod(dayStart, dayEnd));
-        }
-    } else if (period === 'month') {
-        const weeksInMonth = 4;
-        for (let i = 0; i < weeksInMonth; i++) {
-            labels.push(`Week ${i + 1}`);
-
-            const weekStart = new Date(now.getFullYear(), now.getMonth(), 1 + (i * 7));
-            const weekEnd = new Date(now.getFullYear(), now.getMonth(), 1 + ((i + 1) * 7) - 1);
-
-            revenueData.push(calculateRevenueForPeriod(weekStart, weekEnd));
-            expenseData.push(calculateExpensesForPeriod(weekStart, weekEnd));
-        }
-    } else if (period === 'quarter') {
-        for (let i = 2; i >= 0; i--) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
-
-            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-
-            revenueData.push(calculateRevenueForPeriod(monthStart, monthEnd));
-            expenseData.push(calculateExpensesForPeriod(monthStart, monthEnd));
-        }
-    } else if (period === 'year') {
-        for (let i = 11; i >= 0; i--) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            labels.push(date.toLocaleDateString('en-ZA', { month: 'short' }));
-
-            const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-            const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-
-            revenueData.push(calculateRevenueForPeriod(monthStart, monthEnd));
-            expenseData.push(calculateExpensesForPeriod(monthStart, monthEnd));
-        }
-    }
-
-    return { labels, revenueData, expenseData };
-}
-
-// Calculate revenue for period
-function calculateRevenueForPeriod(start, end) {
-    let total = 0;
-    if (transactions && Array.isArray(transactions)) {
-        transactions.forEach(transaction => {
-            const transactionDate = new Date(transaction.timestamp);
-            if (transaction.type === 'revenue' && transactionDate >= start && transactionDate <= end) {
-                total += transaction.amount || 0;
-            }
-        });
-    }
-    return total;
-}
-
-// Calculate expenses for period
-function calculateExpensesForPeriod(start, end) {
-    let total = 0;
-
-    if (expenses && typeof expenses === 'object') {
-        Object.values(expenses).forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            if (expenseDate >= start && expenseDate <= end) {
-                total += expense.amount || 0;
-            }
-        });
-    }
-
-    if (paymentRequests && typeof paymentRequests === 'object') {
-        Object.values(paymentRequests).forEach(request => {
-            if (request.status === 'approved') {
-                const approvalDate = new Date(request.authorizedAt);
-                if (approvalDate >= start && approvalDate <= end) {
-                    total += request.amount || 0;
-                }
-            }
-        });
-    }
-
-    return total;
-}
-
-// Get expense breakdown data
-function getExpenseBreakdownData(period) {
-    const now = new Date();
-    let start, end;
-
-    if (period === 'month') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    } else if (period === 'quarter') {
-        start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    } else if (period === 'year') {
-        start = new Date(now.getFullYear(), 0, 1);
-        end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-    }
-
-    const breakdown = {};
-
-    if (expenses && typeof expenses === 'object') {
-        Object.values(expenses).forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            if (expenseDate >= start && expenseDate <= end) {
-                const type = expense.type === 'custom' ? expense.customName : expense.type;
-                breakdown[type] = (breakdown[type] || 0) + (expense.amount || 0);
-            }
-        });
-    }
-
-    if (paymentRequests && typeof paymentRequests === 'object') {
-        Object.values(paymentRequests).forEach(request => {
-            if (request.status === 'approved') {
-                const approvalDate = new Date(request.authorizedAt);
-                if (approvalDate >= start && approvalDate <= end) {
-                    breakdown[request.purpose] = (breakdown[request.purpose] || 0) + (request.amount || 0);
-                }
-            }
-        });
-    }
-
-    const labels = Object.keys(breakdown);
-    const data = Object.values(breakdown);
-    const colors = [
-        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-        '#EC4899', '#14B8A6', '#F97316', '#06B6D4', '#84CC16'
-    ];
-
-    return { labels, data, colors };
-}
-
 // Submit payment request
 async function submitPaymentRequest(requestData) {
     try {
@@ -1105,6 +859,13 @@ window.approvePayment = async function (requestId) {
         displayPendingRequests();
         displayRecentTransactions();
 
+        // *** CRITICAL FIX: Refresh charts after approval ***
+        try {
+            refreshAllCharts();
+        } catch (error) {
+            console.warn('Could not refresh charts:', error);
+        }
+
     } catch (error) {
         console.error('Error approving payment:', error);
         showToast('Failed to approve payment', 'error');
@@ -1151,6 +912,13 @@ window.rejectPayment = async function (requestId) {
         await updateDashboardStats();
         displayPendingRequests();
         displayRecentTransactions();
+
+        // *** CRITICAL FIX: Refresh charts after rejection ***
+        try {
+            refreshAllCharts();
+        } catch (error) {
+            console.warn('Could not refresh charts:', error);
+        }
 
     } catch (error) {
         console.error('Error rejecting payment:', error);
@@ -1262,20 +1030,15 @@ function showToast(message, type = 'success') {
             toast.style.display = 'none';
         }, 3000);
     } else {
-        // Fallback to console if toast elements don't exist
         console.log(`[${type.toUpperCase()}]: ${message}`);
     }
 }
 
 console.log('=== Finance.js - All functions loaded ===');
-console.log('Ready to attach event listeners');
-// PART 3 - EVENT LISTENERS AND REMAINING FUNCTIONS
-// This part should be ADDED AFTER Part 2, not replace it
+console.log('Ready to attach event listeners');// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
 
-// NOTE: Due to length, the full event listeners section from your original file 
-// continues here. I'll include the essential ones and the pattern.
-
-// Event Listeners
 console.log('=== Attaching Event Listeners ===');
 
 const menuToggle = document.getElementById('menuToggle');
@@ -1311,7 +1074,14 @@ if (refreshBtn) {
             await updateDashboardStats();
             displayPendingRequests();
             displayRecentTransactions();
-            setupCharts();
+
+            // *** CRITICAL FIX: Refresh charts on refresh ***
+            try {
+                refreshAllCharts();
+            } catch (error) {
+                console.warn('Could not refresh charts:', error);
+            }
+
             showToast('Data refreshed', 'success');
         } catch (error) {
             console.error('Refresh error:', error);
@@ -1432,7 +1202,13 @@ if (recordExpenseForm) {
 
             await updateDashboardStats();
             displayRecentTransactions();
-            setupCharts();
+
+            // *** CRITICAL FIX: Refresh charts after recording expense ***
+            try {
+                refreshAllCharts();
+            } catch (error) {
+                console.warn('Could not refresh charts:', error);
+            }
 
         } catch (error) {
             console.error('Error recording expense:', error);
@@ -1582,14 +1358,29 @@ function updateExpenseSummary() {
     }
 }
 
+// *** CRITICAL FIX: Chart period change listeners ***
 const chartPeriod = document.getElementById('chartPeriod');
 if (chartPeriod) {
-    chartPeriod.addEventListener('change', setupRevenueExpensesChart);
+    chartPeriod.addEventListener('change', () => {
+        try {
+            refreshRevenueChart();
+        } catch (error) {
+            console.error('Error refreshing revenue chart:', error);
+        }
+    });
+    console.log('✓ Chart period selector attached');
 }
 
 const expensePeriod = document.getElementById('expensePeriod');
 if (expensePeriod) {
-    expensePeriod.addEventListener('change', setupExpenseBreakdownChart);
+    expensePeriod.addEventListener('change', () => {
+        try {
+            refreshExpenseChart();
+        } catch (error) {
+            console.error('Error refreshing expense chart:', error);
+        }
+    });
+    console.log('✓ Expense period selector attached');
 }
 
 // Close modals
@@ -1600,15 +1391,13 @@ document.querySelectorAll('[id^="close"], [id^="cancel"]').forEach(btn => {
     });
 });
 
-console.log('=== ✓ All Event Listeners Attached ===');
-console.log('BongoBoss POS - Finance Management Script Fully Loaded ✓');
-// PART 4 - SALES VIEWING, FINANCIAL REPORTS, AND REMAINING FUNCTIONALITY
-// This part should be ADDED AFTER Part 3
+console.log('=== ✓ All Event Listeners Attached ===');// ============================================================================
+// SALES VIEWING
+// ============================================================================
 
 const viewSalesBtn = document.getElementById('viewSalesBtn');
 if (viewSalesBtn) {
     viewSalesBtn.addEventListener('click', () => {
-        // Set today's date as default
         const salesViewDate = document.getElementById('salesViewDate');
         if (salesViewDate) {
             salesViewDate.valueAsDate = new Date();
@@ -1632,13 +1421,8 @@ function displayDailySales() {
         const sales = getSalesForDate(date, branchId);
         const summary = calculateSalesSummary(sales);
 
-        // Update summary cards
         updateSalesSummaryCards(summary);
-
-        // Display sales table
         displaySalesTable(sales);
-
-        // Display peak hours
         displayPeakHours(sales);
     } catch (error) {
         console.error('Error displaying daily sales:', error);
@@ -1854,6 +1638,34 @@ if (salesBranchFilter) {
     salesBranchFilter.addEventListener('change', displayDailySales);
 }
 
+// *** NEW: Download Sales CSV Button ***
+const downloadSalesBtn = document.getElementById('downloadSalesBtn');
+if (downloadSalesBtn) {
+    downloadSalesBtn.addEventListener('click', () => {
+        try {
+            const dateInput = document.getElementById('salesViewDate');
+            const branchFilter = document.getElementById('salesBranchFilter');
+
+            const date = dateInput?.value || new Date().toISOString().split('T')[0];
+            const branchId = branchFilter?.value || 'all';
+
+            const sales = getSalesForDate(date, branchId);
+
+            if (sales.length === 0) {
+                showToast('No sales data to download', 'error');
+                return;
+            }
+
+            downloadSalesCSV(sales, date, businessData);
+            showToast('Sales report downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading sales CSV:', error);
+            showToast('Failed to download sales report', 'error');
+        }
+    });
+    console.log('✓ Download sales CSV button attached');
+}
+
 // Close sales modal
 const closeViewSalesModal = document.getElementById('closeViewSalesModal');
 if (closeViewSalesModal) {
@@ -1863,14 +1675,13 @@ if (closeViewSalesModal) {
     });
 }
 
-// =============================================================================
-// COMPREHENSIVE FINANCIAL REPORT
-// =============================================================================
+// ============================================================================
+// COMPREHENSIVE FINANCIAL REPORT WITH COGS
+// ============================================================================
 
 const financialReportBtn = document.getElementById('financialReportBtn');
 if (financialReportBtn) {
     financialReportBtn.addEventListener('click', () => {
-        // Set defaults
         const reportPeriod = document.getElementById('reportPeriod');
         const reportBranchFilter = document.getElementById('reportBranchFilter');
         const reportStartDate = document.getElementById('reportStartDate');
@@ -1935,6 +1746,13 @@ if (generateReportBtn) {
 
         try {
             const reportData = await generateComprehensiveReport(startDate, endDate, branchFilter);
+
+            // *** NEW: Store report data for downloads ***
+            latestReportData = reportData;
+            latestReportStartDate = startDate;
+            latestReportEndDate = endDate;
+            latestReportBranchFilter = branchFilter;
+
             displayFinancialReport(reportData, startDate, endDate, branchFilter);
             showToast('Financial report generated successfully', 'success');
         } catch (error) {
@@ -1947,63 +1765,97 @@ if (generateReportBtn) {
     console.log('✓ Generate report button attached');
 }
 
-// Generate comprehensive financial report data - WITH BRANCH FILTER
+// Generate comprehensive financial report WITH COGS
 async function generateComprehensiveReport(startDate, endDate, branchFilter = 'all') {
     try {
-        console.log('Generating comprehensive report...');
+        console.log('Generating comprehensive report with COGS calculation...');
         const currency = businessData?.currency || 'R';
 
-        // Use the sales module with branch filter
-        const salesData = generateSalesReport(startDate, endDate, branchFilter);
-        const { sales, summary } = salesData;
+        const salesRef = ref(db, `businesses/${businessId}/sales`);
+        const salesSnap = await get(salesRef);
 
-        // Fetch expenses data
+        let totalRevenue = 0;
+        let totalCOGS = 0;
+        let totalTax = 0;
+        let totalSales = 0;
+        let totalChangeGiven = 0;
+        let salesByBranch = {};
+        let salesByPaymentMethod = { cash: 0, card: 0, ewallet: 0 };
+        let productSales = {};
+
+        if (salesSnap && salesSnap.exists()) {
+            const allSales = salesSnap.val();
+
+            Object.values(allSales).forEach(sale => {
+                const saleDate = new Date(sale.soldAt || sale.date);
+                const matchesBranch = branchFilter === 'all' || sale.branchId === branchFilter;
+
+                if (saleDate >= startDate && saleDate <= endDate && matchesBranch) {
+                    totalRevenue += sale.total || 0;
+                    totalTax += sale.tax || 0;
+                    totalSales++;
+
+                    if (sale.items && Array.isArray(sale.items)) {
+                        sale.items.forEach(item => {
+                            const costPrice = item.costPrice || 0;
+                            const quantity = item.quantity || 0;
+                            totalCOGS += costPrice * quantity;
+
+                            const productKey = item.productId || item.productName;
+                            if (!productSales[productKey]) {
+                                productSales[productKey] = {
+                                    name: item.productName,
+                                    quantity: 0,
+                                    revenue: 0,
+                                    cost: 0
+                                };
+                            }
+                            productSales[productKey].quantity += quantity;
+                            productSales[productKey].revenue += item.subtotal || 0;
+                            productSales[productKey].cost += costPrice * quantity;
+                        });
+                    }
+
+                    const paymentMethod = (sale.paymentMethod || 'cash').toLowerCase();
+                    if (salesByPaymentMethod[paymentMethod] !== undefined) {
+                        salesByPaymentMethod[paymentMethod] += sale.total || 0;
+                    }
+
+                    if (sale.paymentMethod === 'cash') {
+                        totalChangeGiven += sale.change || 0;
+                    }
+
+                    const branchId = sale.branchId || 'unknown';
+                    if (!salesByBranch[branchId]) {
+                        salesByBranch[branchId] = {
+                            name: sale.branchName || allBranches[branchId]?.branchName || 'Unknown',
+                            sales: 0,
+                            revenue: 0
+                        };
+                    }
+                    salesByBranch[branchId].sales++;
+                    salesByBranch[branchId].revenue += sale.total || 0;
+                }
+            });
+        }
+
+        const topProducts = Object.values(productSales)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 10)
+            .map(p => ({
+                name: p.name,
+                quantity: p.quantity,
+                revenue: p.revenue,
+                cost: p.cost,
+                profit: p.revenue - p.cost
+            }));
+
         const expensesRef = ref(db, `businesses/${businessId}/finances/expenses`);
         const expensesSnap = await get(expensesRef);
 
         const paymentRequestsRef = ref(db, `businesses/${businessId}/finances/paymentRequests`);
         const paymentRequestsSnap = await get(paymentRequestsRef);
 
-        // Initialize report data with sales summary
-        let totalRevenue = summary.totalRevenue;
-        let totalTax = summary.totalTax;
-        let totalCost = summary.totalCost;
-        let totalSales = summary.totalSales;
-        let totalChangeGiven = summary.totalChangeGiven;
-        let salesByBranch = {};
-
-        // Fix salesByBranch structure
-        Object.entries(salesData.byBranch).forEach(([branchId, branchData]) => {
-            salesByBranch[branchId] = {
-                name: branchData.branchName,
-                sales: branchData.totalSales,
-                revenue: branchData.totalRevenue
-            };
-        });
-
-        let salesByPaymentMethod = {
-            cash: summary.totalCash,
-            card: summary.totalCard,
-            ewallet: summary.totalEWallet
-        };
-        let topProducts = summary.topProductsArray;
-        let peakHours = salesData.peakHours;
-
-        // Monthly breakdown
-        let monthlySales = {};
-        let monthlyExpenses = {};
-
-        // Process monthly sales
-        sales.forEach(sale => {
-            const saleDate = new Date(sale.soldAt || sale.date);
-            const monthKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
-            if (!monthlySales[monthKey]) {
-                monthlySales[monthKey] = 0;
-            }
-            monthlySales[monthKey] += sale.total;
-        });
-
-        // Process expenses with branch filter
         let totalExpenses = 0;
         let expensesByCategory = {};
 
@@ -2022,18 +1874,10 @@ async function generateComprehensiveReport(startDate, endDate, branchFilter = 'a
                         expensesByCategory[category] = 0;
                     }
                     expensesByCategory[category] += expense.amount;
-
-                    // Monthly breakdown
-                    const monthKey = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
-                    if (!monthlyExpenses[monthKey]) {
-                        monthlyExpenses[monthKey] = 0;
-                    }
-                    monthlyExpenses[monthKey] += expense.amount;
                 }
             });
         }
 
-        // Process payment requests with branch filter
         if (paymentRequestsSnap.exists()) {
             const allRequests = paymentRequestsSnap.val();
 
@@ -2050,31 +1894,29 @@ async function generateComprehensiveReport(startDate, endDate, branchFilter = 'a
                             expensesByCategory[category] = 0;
                         }
                         expensesByCategory[category] += request.amount;
-
-                        // Monthly breakdown
-                        const monthKey = `${approvalDate.getFullYear()}-${String(approvalDate.getMonth() + 1).padStart(2, '0')}`;
-                        if (!monthlyExpenses[monthKey]) {
-                            monthlyExpenses[monthKey] = 0;
-                        }
-                        monthlyExpenses[monthKey] += request.amount;
                     }
                 }
             });
         }
 
-        // Calculate profit/loss
-        const grossProfit = totalRevenue - totalCost;
-        const netProfit = totalRevenue - totalExpenses;
+        const grossProfit = totalRevenue - totalCOGS;
+        const netProfit = totalRevenue - totalCOGS - totalExpenses;
         const grossProfitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
         const netProfitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
-        console.log('Report generated successfully');
+        console.log('Report generated successfully with COGS:', {
+            totalRevenue,
+            totalCOGS,
+            grossProfit,
+            totalExpenses,
+            netProfit
+        });
 
         return {
             summary: {
                 totalRevenue,
                 totalTax,
-                totalCost,
+                totalCOGS,
                 totalExpenses,
                 grossProfit,
                 netProfit,
@@ -2088,18 +1930,13 @@ async function generateComprehensiveReport(startDate, endDate, branchFilter = 'a
             salesByPaymentMethod,
             expensesByCategory,
             topProducts,
-            monthlySales,
-            monthlyExpenses,
-            peakHours,
             branchFilter
         };
     } catch (error) {
         console.error('Error in generateComprehensiveReport:', error);
         throw error;
     }
-}
-
-// Display financial report - WITH BRANCH INFO
+}// Display financial report
 function displayFinancialReport(reportData, startDate, endDate, branchFilter = 'all') {
     const currency = businessData?.currency || 'R';
     const { summary } = reportData;
@@ -2107,7 +1944,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
     const startDateStr = startDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
     const endDateStr = endDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Get branch name for display
     const branchName = branchFilter === 'all' ? 'All Branches' :
         (allBranches[branchFilter]?.branchName || 'Unknown Branch');
 
@@ -2126,7 +1962,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 <p style="margin: 0.25rem 0 0 0; color: var(--gray-600);">${startDateStr} - ${endDateStr}</p>
             </div>
             
-            <!-- Executive Summary -->
             <div style="background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
                 <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">Executive Summary</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -2151,7 +1986,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 </div>
             </div>
 
-            <!-- Financial Performance -->
             <div style="margin-bottom: 2rem;">
                 <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Financial Performance</h3>
                 <table style="width: 100%; border-collapse: collapse;">
@@ -2165,26 +1999,33 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                     </tr>
                     <tr style="border-bottom: 1px solid var(--gray-200);">
                         <td style="padding: 0.75rem;">Cost of Goods Sold (COGS)</td>
-                        <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">-${currency} ${summary.totalCost.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">-${currency} ${summary.totalCOGS.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--gray-200); background: var(--gray-50);">
                         <td style="padding: 0.75rem; font-weight: 600;">Gross Profit</td>
                         <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: var(--secondary-color);">${currency} ${summary.grossProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid var(--gray-200);">
+                        <td style="padding: 0.75rem; padding-left: 2rem;">Gross Profit Margin</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--secondary-color);">${summary.grossProfitMargin.toFixed(2)}%</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--gray-200);">
                         <td style="padding: 0.75rem;">Operating Expenses</td>
                         <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">-${currency} ${summary.totalExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                     </tr>
-                    <tr style="background: ${summary.netProfit >= 0 ? 'var(--success-bg)' : 'var(--danger-bg)'};">
+                    <tr style="background: ${summary.netProfit >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};">
                         <td style="padding: 0.75rem; font-weight: 700; font-size: 1.1rem;">Net Profit/Loss</td>
                         <td style="padding: 0.75rem; text-align: right; font-weight: 700; font-size: 1.1rem; color: ${summary.netProfit >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">
                             ${currency} ${summary.netProfit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                         </td>
                     </tr>
+                    <tr style="background: ${summary.netProfit >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'};">
+                        <td style="padding: 0.75rem; padding-left: 2rem;">Net Profit Margin</td>
+                        <td style="padding: 0.75rem; text-align: right; color: ${summary.netProfit >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">${summary.netProfitMargin.toFixed(2)}%</td>
+                    </tr>
                 </table>
             </div>
 
-            <!-- Sales Analysis -->
             <div style="margin-bottom: 2rem;">
                 <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Sales Analysis</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
@@ -2202,42 +2043,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                     </div>
                 </div>
 
-                <!-- Change Management -->
-                <div style="margin-bottom: 1rem;">
-                    <h4 style="margin: 1.5rem 0 0.5rem 0;">Cash Flow & Change Management</h4>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                        <div style="background: white; border: 2px solid var(--gray-200); padding: 1rem; border-radius: 8px;">
-                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Cash Sales</div>
-                            <div style="font-size: 1.25rem; color: var(--success-color); font-weight: 700;">${currency} ${reportData.salesByPaymentMethod.cash.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                        </div>
-                        <div style="background: white; border: 2px solid var(--danger-color); padding: 1rem; border-radius: 8px;">
-                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Change Given</div>
-                            <div style="font-size: 1.25rem; color: var(--danger-color); font-weight: 700;">-${currency} ${summary.totalChangeGiven.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                        </div>
-                        <div style="background: white; border: 2px solid var(--primary-color); padding: 1rem; border-radius: 8px;">
-                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">Net Cash</div>
-                            <div style="font-size: 1.25rem; color: var(--primary-color); font-weight: 700;">${currency} ${(reportData.salesByPaymentMethod.cash - summary.totalChangeGiven).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Peak Sales Hours -->
-                ${reportData.peakHours && reportData.peakHours.length > 0 ? `
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="margin: 1.5rem 0 0.5rem 0;">Peak Sales Hours</h4>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                            ${reportData.peakHours.map((peak, index) => `
-                                <div style="background: linear-gradient(135deg, ${index === 0 ? 'var(--primary-color)' : index === 1 ? 'var(--secondary-color)' : 'var(--accent-color)'}, ${index === 0 ? 'var(--secondary-color)' : index === 1 ? 'var(--accent-color)' : 'var(--primary-color)'}); color: white; padding: 1rem; border-radius: 8px;">
-                                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">#${index + 1} Peak Hour</div>
-                                    <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem;">${peak.timeRange}</div>
-                                    <div style="font-size: 0.875rem;">${peak.sales} sales • ${currency} ${peak.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
-
-                <!-- Sales by Payment Method -->
                 <h4 style="margin: 1.5rem 0 0.5rem 0;">Sales by Payment Method</h4>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
                     ${Object.entries(reportData.salesByPaymentMethod).map(([method, amount]) => {
@@ -2253,39 +2058,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 </div>
             </div>
 
-            <!-- Sales by Branch -->
-            ${Object.keys(reportData.salesByBranch).length > 0 ? `
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Sales by Branch</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: var(--gray-100);">
-                                <th style="padding: 0.75rem; text-align: left;">Branch</th>
-                                <th style="padding: 0.75rem; text-align: center;">Transactions</th>
-                                <th style="padding: 0.75rem; text-align: right;">Revenue</th>
-                                <th style="padding: 0.75rem; text-align: right;">% of Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${Object.entries(reportData.salesByBranch)
-                .sort((a, b) => b[1].revenue - a[1].revenue)
-                .map(([branchId, data]) => {
-                    const percentage = (data.revenue / summary.totalRevenue * 100).toFixed(1);
-                    return `
-                                        <tr style="border-bottom: 1px solid var(--gray-200);">
-                                            <td style="padding: 0.75rem;"><strong>${data.name}</strong></td>
-                                            <td style="padding: 0.75rem; text-align: center;">${data.sales}</td>
-                                            <td style="padding: 0.75rem; text-align: right;">${currency} ${data.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
-                                            <td style="padding: 0.75rem; text-align: right;">${percentage}%</td>
-                                        </tr>
-                                    `;
-                }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            ` : ''}
-
-            <!-- Top Products -->
             ${reportData.topProducts.length > 0 ? `
                 <div style="margin-bottom: 2rem;">
                     <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Top 10 Products by Revenue</h3>
@@ -2293,8 +2065,10 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                         <thead>
                             <tr style="background: var(--gray-100);">
                                 <th style="padding: 0.75rem; text-align: left;">Product</th>
-                                <th style="padding: 0.75rem; text-align: center;">Quantity Sold</th>
+                                <th style="padding: 0.75rem; text-align: center;">Quantity</th>
                                 <th style="padding: 0.75rem; text-align: right;">Revenue</th>
+                                <th style="padding: 0.75rem; text-align: right;">Cost</th>
+                                <th style="padding: 0.75rem; text-align: right;">Profit</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2307,7 +2081,9 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                                         <strong>${product.name}</strong>
                                     </td>
                                     <td style="padding: 0.75rem; text-align: center;">${product.quantity}</td>
-                                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">${currency} ${product.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                    <td style="padding: 0.75rem; text-align: right;">${currency} ${product.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                    <td style="padding: 0.75rem; text-align: right; color: var(--danger-color);">${currency} ${product.cost.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                                    <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: var(--success-color);">${currency} ${product.profit.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -2315,7 +2091,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 </div>
             ` : ''}
 
-            <!-- Expense Breakdown -->
             ${Object.keys(reportData.expensesByCategory).length > 0 ? `
                 <div style="margin-bottom: 2rem;">
                     <h3 style="margin: 0 0 1rem 0; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem;">Expense Breakdown</h3>
@@ -2345,7 +2120,6 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 </div>
             ` : ''}
 
-            <!-- Conclusion -->
             <div style="background: ${summary.netProfit >= 0 ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)'}; color: white; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
                 <h3 style="margin: 0 0 1rem 0; font-size: 1.5rem;">Financial Status</h3>
                 <p style="margin: 0; font-size: 1.125rem; line-height: 1.6;">
@@ -2356,19 +2130,20 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
                 </p>
             </div>
 
-            <!-- Report Footer -->
             <div style="margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--gray-200); text-align: center; color: var(--gray-600);">
                 <p style="margin: 0; font-size: 0.875rem;">Report generated on ${new Date().toLocaleString('en-ZA')}</p>
                 <p style="margin: 0.25rem 0 0 0; font-size: 0.875rem;">BongoBoss Enterprise POS System</p>
             </div>
 
-            <!-- Action Buttons -->
-            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                 <button class="btn-primary" onclick="window.print()">
                     <i class="fas fa-print"></i> Print Report
                 </button>
-                <button class="btn-secondary" onclick="downloadFinancialReportPDF()">
+                <button class="btn-secondary" onclick="downloadFinancialReportPDFHandler()">
                     <i class="fas fa-file-pdf"></i> Download PDF
+                </button>
+                <button class="btn-secondary" onclick="downloadFinancialReportCSVHandler()">
+                    <i class="fas fa-file-csv"></i> Download CSV
                 </button>
             </div>
         </div>
@@ -2377,10 +2152,97 @@ function displayFinancialReport(reportData, startDate, endDate, branchFilter = '
     reportPreview.style.display = 'block';
 }
 
-// Download financial report as PDF (placeholder)
-window.downloadFinancialReportPDF = function () {
-    showToast('PDF download functionality will be added soon. Please use Print to save as PDF.', 'success');
+// *** NEW: Download financial report as PDF handler ***
+window.downloadFinancialReportPDFHandler = async function () {
+    if (!latestReportData || !latestReportStartDate || !latestReportEndDate) {
+        showToast('Please generate a report first', 'error');
+        return;
+    }
+
+    try {
+        const success = await downloadFinancialReportPDF(
+            latestReportData,
+            latestReportStartDate,
+            latestReportEndDate,
+            latestReportBranchFilter,
+            businessData,
+            allBranches
+        );
+
+        if (success) {
+            showToast('PDF report downloaded successfully', 'success');
+        }
+    } catch (error) {
+        console.error('Error downloading PDF:', error);
+        showToast('Failed to download PDF report', 'error');
+    }
 };
+
+// *** NEW: Download financial report as CSV handler ***
+window.downloadFinancialReportCSVHandler = function () {
+    if (!latestReportData || !latestReportStartDate || !latestReportEndDate) {
+        showToast('Please generate a report first', 'error');
+        return;
+    }
+
+    try {
+        const success = downloadFinancialReportCSV(
+            latestReportData,
+            latestReportStartDate,
+            latestReportEndDate,
+            latestReportBranchFilter,
+            businessData,
+            allBranches
+        );
+
+        if (success) {
+            showToast('CSV report downloaded successfully', 'success');
+        }
+    } catch (error) {
+        console.error('Error downloading CSV:', error);
+        showToast('Failed to download CSV report', 'error');
+    }
+};
+
+// *** NEW: Download expenses CSV ***
+const downloadExpensesBtn = document.getElementById('downloadExpensesBtn');
+if (downloadExpensesBtn) {
+    downloadExpensesBtn.addEventListener('click', () => {
+        try {
+            if (Object.keys(expenses).length === 0) {
+                showToast('No expenses data to download', 'error');
+                return;
+            }
+
+            downloadExpensesCSV(expenses, businessData);
+            showToast('Expenses report downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading expenses CSV:', error);
+            showToast('Failed to download expenses report', 'error');
+        }
+    });
+    console.log('✓ Download expenses CSV button attached');
+}
+
+// *** NEW: Download payment requests CSV ***
+const downloadPaymentRequestsBtn = document.getElementById('downloadPaymentRequestsBtn');
+if (downloadPaymentRequestsBtn) {
+    downloadPaymentRequestsBtn.addEventListener('click', () => {
+        try {
+            if (Object.keys(paymentRequests).length === 0) {
+                showToast('No payment requests data to download', 'error');
+                return;
+            }
+
+            downloadPaymentRequestsCSV(paymentRequests, businessData);
+            showToast('Payment requests report downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading payment requests CSV:', error);
+            showToast('Failed to download payment requests report', 'error');
+        }
+    });
+    console.log('✓ Download payment requests CSV button attached');
+}
 
 // Close financial report modal
 const closeFinancialReportModal = document.getElementById('closeFinancialReportModal');
@@ -2394,4 +2256,4 @@ if (closeFinancialReportModal) {
 }
 
 console.log('=== ✓✓✓ All Financial Report Functions Loaded ✓✓✓ ===');
-console.log('BongoBoss POS - Finance Management FULLY OPERATIONAL ✓');
+console.log('BongoBoss POS - Finance Management FULLY OPERATIONAL WITH DOWNLOAD INTEGRATION ✓');

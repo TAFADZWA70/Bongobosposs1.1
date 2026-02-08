@@ -1,0 +1,961 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="BongoBoss POS - Asset Management">
+    <title>Asset Management - BongoBoss Enterprise</title>
+    <link rel="stylesheet" href="../Css/inventory.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Additional styles specific to asset management */
+        .asset-status-excellent {
+            background: var(--success-light);
+            color: var(--success-color);
+        }
+
+        .asset-status-good {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .asset-status-fair {
+            background: var(--warning-light);
+            color: var(--warning-color);
+        }
+
+        .asset-status-poor {
+            background: var(--danger-light);
+            color: var(--danger-color);
+        }
+
+        .asset-status-damaged {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .usage-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .usage-frequent {
+            background: var(--danger-light);
+            color: var(--danger-color);
+        }
+
+        .usage-regular {
+            background: var(--warning-light);
+            color: var(--warning-color);
+        }
+
+        .usage-occasional {
+            background: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .usage-rare {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .maintenance-due {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .asset-image-preview {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .depreciation-chart {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .timeline-item {
+            padding: 1rem;
+            border-left: 3px solid var(--primary-color);
+            margin-left: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+            .timeline-item::before {
+                content: '';
+                position: absolute;
+                left: -8px;
+                top: 1rem;
+                width: 13px;
+                height: 13px;
+                border-radius: 50%;
+                background: var(--primary-color);
+            }
+
+            .timeline-item.maintenance::before {
+                background: var(--warning-color);
+            }
+
+            .timeline-item.damage::before {
+                background: var(--danger-color);
+            }
+
+            .timeline-item.usage::before {
+                background: var(--success-color);
+            }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="spinner"></div>
+        <p>Loading assets...</p>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-cash-register"></i>
+            <span>BongoBoss</span>
+        </div>
+
+        <!-- Business Info -->
+        <div class="business-info">
+            <div class="business-logo-container" id="businessLogoContainer">
+                <i class="fas fa-store"></i>
+            </div>
+            <div class="business-name" id="businessName">Loading...</div>
+            <div class="business-type" id="businessType">-</div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li class="menu-item">
+                <a href="Dashboard.html" class="menu-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Authentication Pages/UserProfile.html" class="menu-link">
+                    <i class="fas fa-user"></i>
+                    <span>Business Profile</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dasboard/AddBranch.html" class="menu-link">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Add Branch</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Dashboard/AddUsers.html" class="menu-link">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Users</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>POS</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-receipt"></i>
+                    <span>Sales</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="InventoryManagement.html" class="menu-link">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="AssetManagement.html" class="menu-link active">
+                    <i class="fas fa-tools"></i>
+                    <span>Asset Management</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="../Owner Pages/Finance.html" class="menu-link">
+                    <i class="fas fa-wallet"></i>
+                    <span>Finances</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="StockTaking.html" class="menu-link">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Stock Taking</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="menu-item">
+                <a href="#" class="menu-link" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <h1>Asset Management</h1>
+                    <p id="welcomeMessage">Track and manage your business assets</p>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search assets..." id="searchInput">
+                </div>
+                <div class="user-profile" id="userProfile">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Asset Content -->
+        <div class="inventory-content">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Assets</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalAssets">0</div>
+                    <div class="stat-change">
+                        <span id="assetsChange">0 categories</span>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-header">
+                        <span class="stat-title">Total Value</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="totalValue">R 0.00</div>
+                    <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i>
+                        <span id="valueChange">Current value</span>
+                    </div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-header">
+                        <span class="stat-title">Maintenance Due</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-wrench"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="maintenanceDue">0</div>
+                    <div class="stat-change negative">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span id="maintenanceOverdue">0 overdue</span>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-header">
+                        <span class="stat-title">Damaged Assets</span>
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="damagedAssets">0</div>
+                    <div class="stat-change negative">
+                        <i class="fas fa-arrow-down"></i>
+                        <span id="damagedChange">Requires attention</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="inventory-actions">
+                <button class="action-btn primary" id="addAssetBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add Asset</span>
+                </button>
+                <button class="action-btn secondary" id="reportDamageBtn">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Report Damage</span>
+                </button>
+                <button class="action-btn" id="recordUsageBtn">
+                    <i class="fas fa-hand-holding"></i>
+                    <span>Record Usage</span>
+                </button>
+                <button class="action-btn" id="scheduleMaintenance">
+                    <i class="fas fa-wrench"></i>
+                    <span>Schedule Maintenance</span>
+                </button>
+                <button class="action-btn" id="viewMaintenanceBtn">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>View Maintenance</span>
+                </button>
+                <button class="action-btn" id="assetReportsBtn">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Asset Reports</span>
+                </button>
+                <button class="action-btn" id="exportAssetsBtn">
+                    <i class="fas fa-download"></i>
+                    <span>Export Assets</span>
+                </button>
+                <button class="action-btn" id="assetHistoryBtn">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label><i class="fas fa-filter"></i> Category:</label>
+                    <select id="categoryFilter">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-heartbeat"></i> Condition:</label>
+                    <select id="conditionFilter">
+                        <option value="all">All Conditions</option>
+                        <option value="excellent">Excellent</option>
+                        <option value="good">Good</option>
+                        <option value="fair">Fair</option>
+                        <option value="poor">Poor</option>
+                        <option value="damaged">Damaged</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-code-branch"></i> Branch:</label>
+                    <select id="branchFilter">
+                        <option value="all">All Branches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-sort"></i> Sort By:</label>
+                    <select id="sortFilter">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="value-high">Value (High to Low)</option>
+                        <option value="value-low">Value (Low to High)</option>
+                        <option value="date-new">Newest First</option>
+                        <option value="date-old">Oldest First</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Assets Section -->
+            <div class="products-section">
+                <div class="section-header">
+                    <h3 class="section-title">Business Assets</h3>
+                    <div class="view-toggle">
+                        <button class="toggle-btn active" data-view="grid" id="gridViewBtn">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button class="toggle-btn" data-view="list" id="listViewBtn">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="assetsLoading" style="display: none; text-align: center; padding: 3rem;">
+                    <div class="spinner"></div>
+                    <p>Loading assets...</p>
+                </div>
+
+                <!-- Grid View -->
+                <div class="products-grid" id="assetsGrid"></div>
+
+                <!-- List View -->
+                <div class="products-list" id="assetsList" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Asset</th>
+                                    <th>Asset ID</th>
+                                    <th>Category</th>
+                                    <th>Purchase Value</th>
+                                    <th>Current Value</th>
+                                    <th>Quantity</th>
+                                    <th>Condition</th>
+                                    <th>Branch</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Asset Modal -->
+    <div class="modal" id="assetModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Asset</h2>
+                <button class="close-btn" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="assetForm">
+                    <div class="form-grid">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Basic Information</h3>
+
+                            <div class="form-group">
+                                <label for="assetName">Asset Name *</label>
+                                <input type="text" id="assetName" required placeholder="e.g., Plastic Crates, Tissue Boxes">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="assetDescription">Description</label>
+                                <textarea id="assetDescription" rows="3" placeholder="Asset description"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="assetId">Asset ID</label>
+                                    <input type="text" id="assetId" placeholder="e.g., AST-001">
+                                </div>
+                                <div class="form-group">
+                                    <label for="serialNumber">Serial Number</label>
+                                    <input type="text" id="serialNumber" placeholder="Optional">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="assetCategory">Category *</label>
+                                <div class="input-with-btn">
+                                    <select id="assetCategory" required>
+                                        <option value="">Select category</option>
+                                    </select>
+                                    <button type="button" class="icon-btn" id="addCategoryBtn">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Information -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Financial Information</h3>
+
+                            <div class="form-group">
+                                <label for="purchaseValue">Purchase Value *</label>
+                                <div class="input-with-icon">
+                                    <span class="currency-symbol">R</span>
+                                    <input type="number" id="purchaseValue" step="0.01" min="0" required placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="currentValue">Current Value</label>
+                                <div class="input-with-icon">
+                                    <span class="currency-symbol">R</span>
+                                    <input type="number" id="currentValue" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <small style="color: var(--gray-600);">Leave blank for automatic depreciation</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="purchaseDate">Purchase Date *</label>
+                                <input type="date" id="purchaseDate" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="depreciationRate">Depreciation Rate (% per year)</label>
+                                <input type="number" id="depreciationRate" step="0.1" min="0" max="100" value="20" placeholder="20">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="supplier">Supplier</label>
+                                <input type="text" id="supplier" placeholder="Supplier name">
+                            </div>
+                        </div>
+
+                        <!-- Quantity & Condition -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Quantity & Condition</h3>
+
+                            <div class="form-group">
+                                <label for="assetBranch">Branch *</label>
+                                <select id="assetBranch" required>
+                                    <option value="">Select branch</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quantity">Quantity *</label>
+                                <input type="number" id="quantity" min="1" required placeholder="1" value="1">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="unit">Unit</label>
+                                <select id="unit">
+                                    <option value="pcs">Pieces</option>
+                                    <option value="units">Units</option>
+                                    <option value="boxes">Boxes</option>
+                                    <option value="crates">Crates</option>
+                                    <option value="sets">Sets</option>
+                                    <option value="rolls">Rolls</option>
+                                    <option value="packs">Packs</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="condition">Current Condition *</label>
+                                <select id="condition" required>
+                                    <option value="excellent">Excellent</option>
+                                    <option value="good">Good</option>
+                                    <option value="fair">Fair</option>
+                                    <option value="poor">Poor</option>
+                                    <option value="damaged">Damaged</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="location">Storage Location</label>
+                                <input type="text" id="location" placeholder="e.g., Storage Room A">
+                            </div>
+                        </div>
+
+                        <!-- Maintenance & Additional -->
+                        <div class="form-section">
+                            <h3 class="form-section-title">Maintenance & Additional</h3>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="requiresMaintenance">
+                                    <span>Requires Regular Maintenance</span>
+                                </label>
+                            </div>
+
+                            <div id="maintenanceDetails" style="display: none;">
+                                <div class="form-group">
+                                    <label for="maintenanceInterval">Maintenance Interval (days)</label>
+                                    <input type="number" id="maintenanceInterval" min="1" placeholder="30">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="lastMaintenance">Last Maintenance Date</label>
+                                    <input type="date" id="lastMaintenance">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="warranty">Warranty Expiry</label>
+                                <input type="date" id="warranty">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notes">Notes</label>
+                                <textarea id="notes" rows="3" placeholder="Additional notes"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="isActive" checked>
+                                    <span>Active Asset</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelAssetForm">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="saveAssetBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-save"></i> Save Asset
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Damage Modal -->
+    <div class="modal" id="reportDamageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Report Asset Damage</h2>
+                <button class="close-btn" id="closeReportDamageModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="reportDamageForm">
+                    <div class="form-group">
+                        <label for="damageAsset">Asset *</label>
+                        <select id="damageAsset" required>
+                            <option value="">Select asset</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageSeverity">Damage Severity *</label>
+                        <select id="damageSeverity" required>
+                            <option value="minor">Minor - Still usable</option>
+                            <option value="moderate">Moderate - Limited use</option>
+                            <option value="severe">Severe - Not usable</option>
+                            <option value="total">Total Loss</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageQuantity">Quantity Damaged *</label>
+                        <input type="number" id="damageQuantity" min="1" required placeholder="Enter quantity">
+                        <small id="availableQuantity" style="color: var(--gray-600); font-size: 0.8rem;"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageDescription">Damage Description *</label>
+                        <textarea id="damageDescription" rows="3" required placeholder="Describe the damage"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageCause">Cause of Damage</label>
+                        <select id="damageCause">
+                            <option value="wear-and-tear">Normal Wear and Tear</option>
+                            <option value="accident">Accident</option>
+                            <option value="misuse">Misuse</option>
+                            <option value="weather">Weather/Environmental</option>
+                            <option value="theft">Theft/Vandalism</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageDate">Date of Damage</label>
+                        <input type="date" id="damageDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damageNotes">Additional Notes</label>
+                        <textarea id="damageNotes" rows="2" placeholder="Optional: Additional details"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelReportDamage">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitReportDamage">
+                            <span class="btn-text">
+                                <i class="fas fa-exclamation-triangle"></i> Report Damage
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Usage Modal -->
+    <div class="modal" id="recordUsageModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Record Asset Usage</h2>
+                <button class="close-btn" id="closeRecordUsageModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="recordUsageForm">
+                    <div class="form-group">
+                        <label for="usageAsset">Asset *</label>
+                        <select id="usageAsset" required>
+                            <option value="">Select asset</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usageQuantity">Quantity Used *</label>
+                        <input type="number" id="usageQuantity" min="1" required placeholder="Enter quantity">
+                        <small id="usageAvailableQuantity" style="color: var(--gray-600); font-size: 0.8rem;"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usageDate">Usage Date *</label>
+                        <input type="date" id="usageDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usagePurpose">Purpose *</label>
+                        <select id="usagePurpose" required>
+                            <option value="daily-operations">Daily Operations</option>
+                            <option value="customer-service">Customer Service</option>
+                            <option value="cleaning">Cleaning/Maintenance</option>
+                            <option value="special-event">Special Event</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="usageNotes">Notes</label>
+                        <textarea id="usageNotes" rows="2" placeholder="Optional: Usage details"></textarea>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelRecordUsage">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitRecordUsage">
+                            <span class="btn-text">
+                                <i class="fas fa-check"></i> Record Usage
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Maintenance Modal -->
+    <div class="modal" id="maintenanceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Schedule Maintenance</h2>
+                <button class="close-btn" id="closeMaintenanceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm">
+                    <div class="form-group">
+                        <label for="maintenanceAsset">Asset *</label>
+                        <select id="maintenanceAsset" required>
+                            <option value="">Select asset</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maintenanceType">Maintenance Type *</label>
+                        <select id="maintenanceType" required>
+                            <option value="routine">Routine Maintenance</option>
+                            <option value="inspection">Inspection</option>
+                            <option value="repair">Repair</option>
+                            <option value="cleaning">Deep Cleaning</option>
+                            <option value="replacement">Part Replacement</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduledDate">Scheduled Date *</label>
+                        <input type="date" id="scheduledDate" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estimatedCost">Estimated Cost</label>
+                        <div class="input-with-icon">
+                            <span class="currency-symbol">R</span>
+                            <input type="number" id="estimatedCost" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="maintenanceDescription">Description *</label>
+                        <textarea id="maintenanceDescription" rows="3" required placeholder="Describe the maintenance work"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="assignedTo">Assigned To</label>
+                        <input type="text" id="assignedTo" placeholder="Person/Company name">
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn-secondary" id="cancelMaintenance">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn-primary" id="submitMaintenance">
+                            <span class="btn-text">
+                                <i class="fas fa-wrench"></i> Schedule
+                            </span>
+                            <span class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Maintenance Modal -->
+    <div class="modal" id="viewMaintenanceModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Maintenance Schedule</h2>
+                <button class="close-btn" id="closeViewMaintenanceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Maintenance Summary -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div class="summary-card" style="background: var(--warning-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Upcoming</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--warning-color);" id="upcomingMaintenance">0</div>
+                    </div>
+                    <div class="summary-card" style="background: var(--danger-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Overdue</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--danger-color);" id="overdueMaintenance">0</div>
+                    </div>
+                    <div class="summary-card" style="background: var(--success-light); padding: 1rem; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--gray-600); margin-bottom: 0.5rem;">Completed</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--success-color);" id="completedMaintenance">0</div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Table -->
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Asset</th>
+                                <th>Type</th>
+                                <th>Scheduled Date</th>
+                                <th>Cost</th>
+                                <th>Assigned To</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintenanceTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-wrench" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No maintenance scheduled
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset History Modal -->
+    <div class="modal" id="historyModal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Asset Change History</h2>
+                <button class="close-btn" id="closeHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Asset</th>
+                                <th>Action</th>
+                                <th>Changed By</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                                    <i class="fas fa-history" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                    No change history available
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast success" id="successToast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Action completed successfully!</span>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast error" id="errorToast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorToastMessage">An error occurred!</span>
+    </div>
+
+    <script type="module" src="../Script/AssetManagement.js"></script>
+</body>
+</html>

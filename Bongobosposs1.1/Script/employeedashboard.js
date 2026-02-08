@@ -702,6 +702,7 @@ function calculateChange() {
 }
 
 // Complete sale
+// Complete sale
 const completeSaleBtn = document.getElementById('completeSaleBtn');
 if (completeSaleBtn) {
     completeSaleBtn.addEventListener('click', async () => {
@@ -725,19 +726,25 @@ if (completeSaleBtn) {
             // Generate receipt number
             const receiptNumber = generateReceiptNumber();
 
-            // Create sale record
+            // ========================================================================
+            // **CRITICAL FIX**: Include costPrice in sale items for COGS calculation
+            // ========================================================================
             const saleData = {
                 receiptNumber: receiptNumber,
-                items: shoppingCart.map(item => ({
-                    productId: item.productId,
-                    productName: item.productName,
-                    sku: item.sku,
-                    sellPrice: item.sellPrice,
-                    taxRate: item.taxRate,
-                    quantity: item.quantity,
-                    subtotal: item.sellPrice * item.quantity,
-                    tax: (item.sellPrice * item.quantity) * ((item.taxRate || 0) / 100)
-                })),
+                items: shoppingCart.map(item => {
+                    const product = branchProducts[item.productId];
+                    return {
+                        productId: item.productId,
+                        productName: item.productName,
+                        sku: item.sku,
+                        sellPrice: item.sellPrice,
+                        costPrice: product.costPrice || 0, // **NEW**: CRITICAL for profit calculation
+                        taxRate: item.taxRate,
+                        quantity: item.quantity,
+                        subtotal: item.sellPrice * item.quantity,
+                        tax: (item.sellPrice * item.quantity) * ((item.taxRate || 0) / 100)
+                    };
+                }),
                 subtotal: subtotal,
                 tax: tax,
                 total: total,
@@ -807,7 +814,6 @@ if (completeSaleBtn) {
         }
     });
 }
-
 // Generate receipt number
 function generateReceiptNumber() {
     const now = new Date();
